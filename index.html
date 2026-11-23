@@ -1,0 +1,2214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0c0d10">
+  <meta name="referrer" content="no-referrer">
+  <title>Photo Date Burn</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" referrerpolicy="no-referrer"></script>
+
+  <style>
+    :root {
+      --bg: #0c0d10;
+      --panel: #15171b;
+      --panel-2: #1c1f24;
+      --panel-3: #23272e;
+      --border: #2d323a;
+      --border-hover: #454c57;
+      --text: #f5f6f7;
+      --muted: #9aa3ad;
+      --muted-2: #707985;
+      --accent: #f1a33a;
+      --accent-2: #ffb14b;
+      --success: #69cf98;
+      --warning: #e7b85a;
+      --danger: #ed7777;
+      --radius: 16px;
+      --shadow: 0 22px 70px rgba(0,0,0,.28);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--bg); }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(241,163,58,.07), transparent 32rem),
+        radial-gradient(circle at 80% 15%, rgba(79,122,255,.035), transparent 26rem),
+        var(--bg);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    button, select, input { font: inherit; }
+
+    button { border: 0; }
+
+    button:focus-visible,
+    select:focus-visible,
+    .drop-zone:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .app {
+      width: min(1540px, calc(100% - 30px));
+      margin: 0 auto;
+      padding: 26px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 22px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #17110a;
+      font-weight: 900;
+      letter-spacing: -.04em;
+      box-shadow: 0 12px 34px rgba(241,163,58,.18);
+    }
+
+    .brand-copy h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 2vw, 1.75rem);
+      letter-spacing: -.035em;
+    }
+
+    .brand-copy p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+
+    .privacy-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(21,23,27,.82);
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+
+    .privacy-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(105,207,152,.1);
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 365px minmax(0,1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .panel {
+      background: rgba(21,23,27,.95);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .panel-body { padding: 18px; }
+
+    .panel-title {
+      margin: 0 0 4px;
+      font-size: .98rem;
+      font-weight: 750;
+    }
+
+    .panel-description {
+      margin: 0 0 15px;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      color: #d9dee4;
+      font-size: .78rem;
+      font-weight: 700;
+    }
+
+    select {
+      width: 100%;
+      min-height: 44px;
+      padding: 0 38px 0 12px;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background:
+        linear-gradient(45deg, transparent 50%, var(--muted) 50%) calc(100% - 17px) 18px / 5px 5px no-repeat,
+        linear-gradient(135deg, var(--muted) 50%, transparent 50%) calc(100% - 12px) 18px / 5px 5px no-repeat,
+        var(--panel-2);
+      appearance: none;
+      cursor: pointer;
+    }
+
+    select:hover { border-color: var(--border-hover); }
+
+    .preset-example {
+      position: relative;
+      min-height: 174px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background:
+        linear-gradient(to top, rgba(0,0,0,.44), transparent 62%),
+        radial-gradient(circle at 70% 24%, rgba(255,255,255,.14), transparent 22%),
+        linear-gradient(155deg, #5c6466 0%, #25282d 48%, #7e8177 100%);
+    }
+
+    .preset-example::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(0deg, rgba(255,255,255,.012), rgba(255,255,255,.012) 1px, transparent 1px, transparent 3px);
+      mix-blend-mode: screen;
+    }
+
+    .sample-date,
+    .stamp-preview {
+      position: absolute;
+      z-index: 2;
+      white-space: nowrap;
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .sample-date { font-size: 14px; }
+
+    .preset-info {
+      min-height: 64px;
+      margin-top: 11px;
+      padding: 10px 11px;
+      border-radius: 10px;
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,.035);
+      color: var(--muted);
+      font-size: .73rem;
+    }
+
+    .preset-info strong {
+      display: block;
+      color: #dfe4e8;
+      margin-bottom: 2px;
+      font-size: .75rem;
+    }
+
+    .retro-orange {
+      right: 5%;
+      bottom: 6%;
+      color: #ff8b00;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-shadow: 1px 1px 1px #000, 0 0 2px rgba(0,0,0,.7);
+    }
+
+    .retro-red {
+      right: 5%;
+      bottom: 6%;
+      color: #ff3d32;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .09em;
+      text-shadow: 0 0 3px rgba(255,61,50,.35), 1px 1px 1px #000;
+    }
+
+    .retro-amber {
+      right: 5%;
+      bottom: 6%;
+      color: #ffad34;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .065em;
+      text-shadow: 1px 1px 1px #000;
+    }
+
+    .retro-yellow {
+      right: 5%;
+      bottom: 6%;
+      color: #ffda42;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .07em;
+      text-shadow: 1px 1px 1px #000;
+    }
+
+    .retro-green {
+      right: 5%;
+      bottom: 6%;
+      color: #79f06e;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-shadow: 0 0 3px rgba(121,240,110,.35), 1px 1px 1px #000;
+    }
+
+    .retro-blue {
+      right: 5%;
+      bottom: 6%;
+      color: #64c5ff;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .055em;
+      text-shadow: 0 0 3px rgba(100,197,255,.3), 1px 1px 1px #000;
+    }
+
+    .retro-compact {
+      right: 5%;
+      bottom: 6%;
+      color: #ff674c;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .025em;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    .retro-dateback {
+      left: 5%;
+      bottom: 6%;
+      color: #ff6049;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .13em;
+      text-shadow: 1px 1px 0 rgba(0,0,0,.95);
+    }
+
+    .retro-yy-mm-dd {
+      right: 5%;
+      bottom: 6%;
+      color: #ff8735;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .05em;
+      text-shadow: 1px 1px 0 rgba(0,0,0,.95);
+    }
+
+    .retro-month-name {
+      right: 5%;
+      bottom: 6%;
+      color: #ff533d;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .055em;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    .retro-polaroid {
+      left: 5%;
+      bottom: 6%;
+      color: #fff0b3;
+      font-family: "Courier New", monospace;
+      font-weight: 700;
+      letter-spacing: .02em;
+      text-shadow: 1px 1px 2px rgba(0,0,0,.9);
+    }
+
+    .retro-camcorder {
+      left: 5%;
+      bottom: 6%;
+      color: #f5f5f5;
+      background: rgba(0,0,0,.72);
+      padding: .45em .6em;
+      border-radius: 2px;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .03em;
+    }
+
+    .retro-minidv {
+      left: 5%;
+      bottom: 6%;
+      color: #fff;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .045em;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .retro-vhs {
+      left: 5%;
+      top: 7%;
+      color: #fff;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .045em;
+      text-shadow: 2px 2px 0 #000;
+    }
+
+    .retro-lcd {
+      right: 5%;
+      bottom: 6%;
+      color: #151812;
+      background: rgba(194,211,145,.82);
+      padding: .42em .58em;
+      border: 1px solid rgba(20,24,14,.6);
+      border-radius: 2px;
+      font-family: "Courier New", monospace;
+      font-weight: 900;
+      letter-spacing: .025em;
+    }
+
+    .classic {
+      right: 5%;
+      bottom: 6%;
+      color: #fff;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 700;
+      text-shadow: 0 2px 5px rgba(0,0,0,.95);
+    }
+
+    .modern {
+      left: 5%;
+      bottom: 6%;
+      color: #fff;
+      padding: .48em .7em;
+      border-radius: 999px;
+      background: rgba(0,0,0,.62);
+      font-family: Arial, Helvetica, sans-serif;
+      font-weight: 650;
+    }
+
+    .detailed {
+      right: 5%;
+      bottom: 6%;
+      color: #fff;
+      font-family: "Courier New", monospace;
+      font-weight: 700;
+      text-shadow: 0 2px 4px rgba(0,0,0,.95);
+    }
+
+    .resolution-note {
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      margin-top: 14px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+    }
+
+    .resolution-icon {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      background: rgba(241,163,58,.12);
+      color: var(--accent);
+      font-size: .8rem;
+      font-weight: 900;
+    }
+
+    .resolution-note strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: .77rem;
+    }
+
+    .resolution-note span {
+      display: block;
+      color: var(--muted);
+      font-size: .71rem;
+      line-height: 1.45;
+    }
+
+    .button {
+      min-height: 44px;
+      padding: 0 15px;
+      border-radius: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease, transform 120ms ease;
+    }
+
+    .button:active:not(:disabled) { transform: translateY(1px); }
+
+    .button-primary {
+      width: 100%;
+      background: var(--accent);
+      color: #17110a;
+      font-weight: 850;
+    }
+
+    .button-primary:hover:not(:disabled) { background: var(--accent-2); }
+
+    .button-ghost {
+      min-height: 36px;
+      padding: 0 11px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .76rem;
+      font-weight: 650;
+    }
+
+    .button-ghost:hover:not(:disabled) {
+      color: var(--text);
+      border-color: var(--border-hover);
+    }
+
+    .button:disabled {
+      opacity: .42;
+      cursor: not-allowed;
+    }
+
+    .export-panel .panel-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .export-summary {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: .76rem;
+    }
+
+    .export-summary strong { color: var(--text); }
+
+    .progress-wrap { display: none; }
+    .progress-wrap.visible { display: block; }
+
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: .7rem;
+    }
+
+    .progress-track {
+      height: 7px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--panel-3);
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      border-radius: inherit;
+      background: var(--accent);
+      transition: width 160ms ease;
+    }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid rgba(23,17,10,.25);
+      border-top-color: #17110a;
+      border-radius: 50%;
+      animation: spin .75s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .main { min-width: 0; }
+
+    .drop-zone {
+      min-height: 190px;
+      padding: 28px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      border: 1.5px dashed #3b424c;
+      border-radius: var(--radius);
+      background: rgba(21,23,27,.94);
+      cursor: pointer;
+      transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
+    }
+
+    .drop-zone:hover,
+    .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(241,163,58,.055);
+    }
+
+    .drop-zone.dragover { transform: scale(.997); }
+
+    .drop-inner { max-width: 560px; }
+
+    .upload-icon {
+      width: 52px;
+      height: 52px;
+      margin: 0 auto 13px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: rgba(241,163,58,.12);
+      color: var(--accent);
+      font-size: 25px;
+    }
+
+    .drop-zone h2 {
+      margin: 0 0 6px;
+      font-size: 1rem;
+    }
+
+    .drop-zone p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .drop-zone .formats {
+      margin-top: 9px;
+      color: var(--muted-2);
+      font-size: .71rem;
+    }
+
+    .browse-text {
+      color: var(--accent);
+      font-weight: 750;
+    }
+
+    #fileInput {
+      position: fixed;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .status-strip {
+      margin-top: 14px;
+      display: none;
+      gap: 10px;
+      padding: 11px 13px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: .76rem;
+    }
+
+    .status-strip.visible {
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .status-strip.warning {
+      border-color: rgba(231,184,90,.3);
+      background: rgba(231,184,90,.06);
+      color: #d9c594;
+    }
+
+    .status-strip.error {
+      border-color: rgba(237,119,119,.3);
+      background: rgba(237,119,119,.06);
+      color: #e0a6a6;
+    }
+
+    .status-icon {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--panel-3);
+      color: var(--accent);
+      font-size: .66rem;
+      font-weight: 900;
+    }
+
+    .gallery-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin: 24px 0 13px;
+    }
+
+    .gallery-heading {
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+    }
+
+    .gallery-heading h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .image-count {
+      color: var(--muted);
+      font-size: .76rem;
+    }
+
+    .gallery-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
+      gap: 14px;
+    }
+
+    .photo-card {
+      min-width: 0;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+
+    .photo-preview {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      container-type: inline-size;
+      background:
+        linear-gradient(45deg, #191d22 25%, transparent 25%),
+        linear-gradient(-45deg, #191d22 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #191d22 75%),
+        linear-gradient(-45deg, transparent 75%, #191d22 75%),
+        #121519;
+      background-size: 18px 18px;
+      background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+    }
+
+    .photo-preview img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: contain;
+    }
+
+    .stamp-preview {
+      max-width: 90%;
+      font-size: clamp(9px, 4.1cqw, 18px);
+    }
+
+    .photo-meta { padding: 12px; }
+
+    .photo-name {
+      margin-bottom: 7px;
+      overflow: hidden;
+      color: #e9edf1;
+      font-size: .8rem;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .photo-details {
+      display: grid;
+      gap: 6px;
+    }
+
+    .detail-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: .69rem;
+    }
+
+    .detail-row strong {
+      overflow: hidden;
+      color: #cdd3da;
+      font-weight: 600;
+      text-align: right;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 7px;
+      border-radius: 999px;
+      font-size: .63rem;
+      font-weight: 700;
+    }
+
+    .source-badge.exif {
+      background: rgba(105,207,152,.09);
+      color: #86d9af;
+    }
+
+    .source-badge.fallback {
+      background: rgba(231,184,90,.1);
+      color: #dfbd74;
+    }
+
+    .card-actions {
+      display: flex;
+      gap: 7px;
+      padding-top: 10px;
+      margin-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .card-action {
+      flex: 1;
+      min-height: 34px;
+      border-radius: 8px;
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .68rem;
+      font-weight: 700;
+    }
+
+    .card-action:hover:not(:disabled) {
+      color: var(--text);
+      border-color: var(--border-hover);
+    }
+
+    .card-action.remove:hover {
+      color: #f3a3a3;
+      border-color: rgba(237,119,119,.35);
+    }
+
+    .card-action:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      margin-top: 14px;
+      padding: 36px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: rgba(21,23,27,.5);
+      text-align: center;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 940px) {
+      .workspace { grid-template-columns: 1fr; }
+      .sidebar {
+        position: static;
+        grid-template-columns: 1fr 1fr;
+      }
+      .controls-panel { grid-row: span 2; }
+    }
+
+    @media (max-width: 680px) {
+      .app {
+        width: min(100% - 20px, 1540px);
+        padding-top: 18px;
+      }
+
+      .topbar { display: grid; }
+      .privacy-pill { justify-self: start; }
+      .sidebar { grid-template-columns: 1fr; }
+      .controls-panel { grid-row: auto; }
+
+      .gallery {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 470px) {
+      .gallery { grid-template-columns: 1fr; }
+      .gallery-actions { flex-direction: column; }
+      .brand-copy p { max-width: 260px; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">DB</div>
+        <div class="brand-copy">
+          <h1>Photo Date Burn</h1>
+          <p>Batch-burn original capture dates onto full-resolution photographs.</p>
+        </div>
+      </div>
+
+      <div class="privacy-pill">
+        <span class="privacy-dot"></span>
+        Photos stay in your browser
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar">
+        <section class="panel controls-panel">
+          <div class="panel-body">
+            <h2 class="panel-title">Timestamp style</h2>
+            <p class="panel-description">Choose from film date-backs, compact cameras, camcorders, VHS, and modern presets.</p>
+
+            <div class="field">
+              <label for="presetSelect">Preset</label>
+              <select id="presetSelect">
+                <optgroup label="Retro film and compact cameras">
+                  <option value="retro-orange">Late 90s Digital Orange</option>
+                  <option value="retro-red">90s Date-Back Red</option>
+                  <option value="retro-amber">Film Date-Back Amber</option>
+                  <option value="retro-yellow">Disposable Camera Yellow</option>
+                  <option value="retro-compact">Compact Camera Red-Orange</option>
+                  <option value="retro-dateback">35mm Date-Back Wide Spacing</option>
+                  <option value="retro-yy-mm-dd">Early Digital YY-MM-DD</option>
+                  <option value="retro-month-name">Compact Camera Month Name</option>
+                  <option value="retro-polaroid">Instant Print Warm White</option>
+                </optgroup>
+
+                <optgroup label="Retro video and camcorder">
+                  <option value="retro-green">Hi8 Camcorder Green</option>
+                  <option value="retro-blue">Early Digital Camera Blue</option>
+                  <option value="retro-camcorder">Camcorder OSD Date + Time</option>
+                  <option value="retro-minidv">MiniDV White OSD</option>
+                  <option value="retro-vhs">VHS Top-Left Timestamp</option>
+                  <option value="retro-lcd">LCD Camera Readout</option>
+                </optgroup>
+
+                <optgroup label="Clean styles">
+                  <option value="classic">Classic Film</option>
+                  <option value="modern">Modern Minimalist</option>
+                  <option value="detailed">Detailed Date + Time</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="preset-example">
+              <span id="sampleDate" class="sample-date retro-orange">2026 08 31</span>
+            </div>
+
+            <div id="presetInfo" class="preset-info"></div>
+
+            <div class="resolution-note">
+              <div class="resolution-icon">1:1</div>
+              <div>
+                <strong>Strict original resolution</strong>
+                <span>Export canvases match each image's natural width and height. JPEG export uses quality 1.0.</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel export-panel">
+          <div class="panel-body">
+            <div>
+              <h2 class="panel-title">Batch export</h2>
+              <p class="panel-description">Finished JPEGs are packaged into one ZIP.</p>
+            </div>
+
+            <div class="export-summary">
+              <span>Photos</span>
+              <strong id="exportCount">0</strong>
+            </div>
+
+            <div class="export-summary">
+              <span>Using fallback date</span>
+              <strong id="fallbackCount">0</strong>
+            </div>
+
+            <div id="progressWrap" class="progress-wrap">
+              <div class="progress-meta">
+                <span id="progressLabel">Processing</span>
+                <span id="progressPercent">0%</span>
+              </div>
+              <div class="progress-track">
+                <div id="progressBar" class="progress-bar"></div>
+              </div>
+            </div>
+
+            <button id="downloadAllButton" class="button button-primary" type="button" disabled>
+              <span id="downloadAllText">Download All</span>
+            </button>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main">
+        <input id="fileInput" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
+
+        <div id="dropZone" class="drop-zone" role="button" tabindex="0">
+          <div class="drop-inner">
+            <div class="upload-icon">＋</div>
+            <h2>Drop your photos here</h2>
+            <p>or <span class="browse-text">browse your device</span> to add a batch</p>
+            <div class="formats">JPG, JPEG, PNG · Multiple files supported</div>
+          </div>
+        </div>
+
+        <div id="statusStrip" class="status-strip" role="status" aria-live="polite">
+          <span class="status-icon">i</span>
+          <span id="statusText"></span>
+        </div>
+
+        <div id="gallerySection" class="hidden">
+          <div class="gallery-header">
+            <div class="gallery-heading">
+              <h2>Preview</h2>
+              <span id="imageCount" class="image-count">0 photos</span>
+            </div>
+
+            <div class="gallery-actions">
+              <button id="addMoreButton" class="button button-ghost" type="button">Add more</button>
+              <button id="clearButton" class="button button-ghost" type="button">Clear all</button>
+            </div>
+          </div>
+
+          <div id="gallery" class="gallery"></div>
+        </div>
+
+        <div id="emptyState" class="empty-state">
+          Your photo previews will appear here after you add files.
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    "use strict";
+
+    (() => {
+      const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
+      const ACCEPTED_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
+
+      const state = {
+        photos: [],
+        preset: "retro-orange",
+        busy: false,
+        nextId: 1
+      };
+
+      const elements = {
+        fileInput: document.getElementById("fileInput"),
+        dropZone: document.getElementById("dropZone"),
+        presetSelect: document.getElementById("presetSelect"),
+        sampleDate: document.getElementById("sampleDate"),
+        presetInfo: document.getElementById("presetInfo"),
+        gallery: document.getElementById("gallery"),
+        gallerySection: document.getElementById("gallerySection"),
+        emptyState: document.getElementById("emptyState"),
+        imageCount: document.getElementById("imageCount"),
+        exportCount: document.getElementById("exportCount"),
+        fallbackCount: document.getElementById("fallbackCount"),
+        downloadAllButton: document.getElementById("downloadAllButton"),
+        downloadAllText: document.getElementById("downloadAllText"),
+        addMoreButton: document.getElementById("addMoreButton"),
+        clearButton: document.getElementById("clearButton"),
+        statusStrip: document.getElementById("statusStrip"),
+        statusText: document.getElementById("statusText"),
+        progressWrap: document.getElementById("progressWrap"),
+        progressLabel: document.getElementById("progressLabel"),
+        progressPercent: document.getElementById("progressPercent"),
+        progressBar: document.getElementById("progressBar")
+      };
+
+      const PRESETS = {
+        "retro-orange": {
+          sample: "2026 08 31",
+          title: "Late 90s Digital Orange",
+          description: "Warm orange numeric imprint inspired by late-1990s compact cameras and early consumer digital cameras.",
+          format: "spaceDate",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ff8b00",
+          fontRatio: 0.028,
+          minimumFont: 24,
+          maximumFont: 180,
+          shadowColor: "rgba(0,0,0,.88)",
+          shadowBlurRatio: 0.03,
+          shadowOffsetRatio: 0.045,
+          letterSpacingRatio: 0.08
+        },
+
+        "retro-red": {
+          sample: "31 08 '26",
+          title: "90s Date-Back Red",
+          description: "Red date-back style with a short year and tighter late-film-era spacing.",
+          format: "dateBack",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ff3d32",
+          fontRatio: 0.028,
+          minimumFont: 24,
+          maximumFont: 180,
+          shadowColor: "rgba(0,0,0,.88)",
+          shadowBlurRatio: 0.024,
+          shadowOffsetRatio: 0.045,
+          letterSpacingRatio: 0.09,
+          glowColor: "rgba(255,61,50,.34)"
+        },
+
+        "retro-amber": {
+          sample: "31-08-26",
+          title: "Film Date-Back Amber",
+          description: "Amber date imprint with the compact DD-MM-YY format often associated with consumer film cameras.",
+          format: "dashShort",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ffad34",
+          fontRatio: 0.028,
+          minimumFont: 24,
+          maximumFont: 180,
+          shadowColor: "rgba(0,0,0,.9)",
+          shadowBlurRatio: 0.02,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.065
+        },
+
+        "retro-yellow": {
+          sample: "08/31/26",
+          title: "Disposable Camera Yellow",
+          description: "Bright yellow short-date stamp inspired by disposable and low-cost point-and-shoot cameras.",
+          format: "slashShort",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ffda42",
+          fontRatio: 0.028,
+          minimumFont: 24,
+          maximumFont: 180,
+          shadowColor: "rgba(0,0,0,.88)",
+          shadowBlurRatio: 0.025,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.07
+        },
+
+        "retro-compact": {
+          sample: "2026.08.31",
+          title: "Compact Camera Red-Orange",
+          description: "Period-separated red-orange date inspired by compact cameras from the late film and early digital transition.",
+          format: "dots",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ff674c",
+          fontRatio: 0.027,
+          minimumFont: 24,
+          maximumFont: 178,
+          shadowColor: "rgba(0,0,0,.9)",
+          shadowBlurRatio: 0.018,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.025
+        },
+
+        "retro-dateback": {
+          sample: "'26  08  31",
+          title: "35mm Date-Back Wide Spacing",
+          description: "Wide-spaced red date-back imprint that resembles simple 35mm camera quartz-date backs.",
+          format: "wideDateBack",
+          position: "bottom-left",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ff6049",
+          fontRatio: 0.027,
+          minimumFont: 24,
+          maximumFont: 175,
+          shadowColor: "rgba(0,0,0,.92)",
+          shadowBlurRatio: 0.018,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.13
+        },
+
+        "retro-yy-mm-dd": {
+          sample: "26-08-31",
+          title: "Early Digital YY-MM-DD",
+          description: "Short-year numeric stamp inspired by compact digital camera date overlays from the early 2000s.",
+          format: "yyMMdd",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ff8735",
+          fontRatio: 0.027,
+          minimumFont: 24,
+          maximumFont: 175,
+          shadowColor: "rgba(0,0,0,.9)",
+          shadowBlurRatio: 0.02,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.05
+        },
+
+        "retro-month-name": {
+          sample: "31 AUG '26",
+          title: "Compact Camera Month Name",
+          description: "Red text with an abbreviated month for a late-1990s compact-camera feel.",
+          format: "dayMonthShortYear",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ff533d",
+          fontRatio: 0.027,
+          minimumFont: 23,
+          maximumFont: 175,
+          shadowColor: "rgba(0,0,0,.92)",
+          shadowBlurRatio: 0.02,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.055
+        },
+
+        "retro-polaroid": {
+          sample: "AUG 31 2026",
+          title: "Instant Print Warm White",
+          description: "Warm white date text designed to feel softer and less electronic on instant-print style images.",
+          format: "monthText",
+          position: "bottom-left",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "700",
+          fillStyle: "#fff0b3",
+          fontRatio: 0.025,
+          minimumFont: 22,
+          maximumFont: 165,
+          shadowColor: "rgba(0,0,0,.85)",
+          shadowBlurRatio: 0.035,
+          shadowOffsetRatio: 0.035,
+          letterSpacingRatio: 0.02
+        },
+
+        "retro-green": {
+          sample: "AUG 31 2026",
+          title: "Hi8 Camcorder Green",
+          description: "Green on-screen display inspired by Hi8 and analog camcorder date overlays.",
+          format: "monthText",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#79f06e",
+          fontRatio: 0.026,
+          minimumFont: 23,
+          maximumFont: 170,
+          shadowColor: "rgba(0,0,0,.9)",
+          shadowBlurRatio: 0.03,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.05,
+          glowColor: "rgba(121,240,110,.32)"
+        },
+
+        "retro-blue": {
+          sample: "2026/08/31",
+          title: "Early Digital Camera Blue",
+          description: "Cool blue full-year stamp inspired by consumer digital camera overlays from the early 2000s.",
+          format: "slashFull",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#64c5ff",
+          fontRatio: 0.027,
+          minimumFont: 24,
+          maximumFont: 175,
+          shadowColor: "rgba(0,0,0,.9)",
+          shadowBlurRatio: 0.025,
+          shadowOffsetRatio: 0.04,
+          letterSpacingRatio: 0.055,
+          glowColor: "rgba(100,197,255,.28)"
+        },
+
+        "retro-camcorder": {
+          sample: "31.AUG.2026  23:35",
+          title: "Camcorder OSD Date + Time",
+          description: "Date and time inside a dark rectangular on-screen display, designed to resemble consumer camcorder overlays.",
+          format: "camcorder",
+          position: "bottom-left",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#f5f5f5",
+          fontRatio: 0.023,
+          minimumFont: 22,
+          maximumFont: 155,
+          shadowColor: "transparent",
+          shadowBlurRatio: 0,
+          shadowOffsetRatio: 0,
+          letterSpacingRatio: 0.03,
+          background: "rgba(0,0,0,.72)",
+          boxRadiusRatio: 0.04
+        },
+
+        "retro-minidv": {
+          sample: "31 AUG 2026 23:35",
+          title: "MiniDV White OSD",
+          description: "White monospaced MiniDV-style date and time with a hard black offset shadow.",
+          format: "miniDV",
+          position: "bottom-left",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ffffff",
+          fontRatio: 0.024,
+          minimumFont: 22,
+          maximumFont: 160,
+          shadowColor: "#000000",
+          shadowBlurRatio: 0,
+          shadowOffsetRatio: 0.055,
+          letterSpacingRatio: 0.045
+        },
+
+        "retro-vhs": {
+          sample: "AUG.31.2026  23:35",
+          title: "VHS Top-Left Timestamp",
+          description: "Top-left white timestamp inspired by home-video VHS and analog tape date generators.",
+          format: "vhs",
+          position: "top-left",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#ffffff",
+          fontRatio: 0.024,
+          minimumFont: 22,
+          maximumFont: 160,
+          shadowColor: "#000000",
+          shadowBlurRatio: 0,
+          shadowOffsetRatio: 0.055,
+          letterSpacingRatio: 0.045
+        },
+
+        "retro-lcd": {
+          sample: "2026-08-31 23:35",
+          title: "LCD Camera Readout",
+          description: "Dark characters on a muted green LCD panel, styled after compact-camera status displays.",
+          format: "detailed",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "900",
+          fillStyle: "#151812",
+          fontRatio: 0.022,
+          minimumFont: 21,
+          maximumFont: 150,
+          shadowColor: "transparent",
+          shadowBlurRatio: 0,
+          shadowOffsetRatio: 0,
+          letterSpacingRatio: 0.025,
+          background: "rgba(194,211,145,.82)",
+          borderColor: "rgba(20,24,14,.6)",
+          boxRadiusRatio: 0.03
+        },
+
+        classic: {
+          sample: "August 31, 2026",
+          title: "Classic Film",
+          description: "White serif date with a subtle black shadow for a restrained print-oriented look.",
+          format: "classic",
+          position: "bottom-right",
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontWeight: "700",
+          fillStyle: "#ffffff",
+          fontRatio: 0.026,
+          minimumFont: 24,
+          maximumFont: 170,
+          shadowColor: "rgba(0,0,0,.92)",
+          shadowBlurRatio: 0.075,
+          shadowOffsetRatio: 0.065,
+          letterSpacingRatio: 0
+        },
+
+        modern: {
+          sample: "2026-08-31",
+          title: "Modern Minimalist",
+          description: "Clean ISO date inside a semi-transparent black pill at the bottom left.",
+          format: "modern",
+          position: "bottom-left",
+          fontFamily: "Arial, Helvetica, sans-serif",
+          fontWeight: "650",
+          fillStyle: "#ffffff",
+          fontRatio: 0.024,
+          minimumFont: 22,
+          maximumFont: 160,
+          shadowColor: "transparent",
+          shadowBlurRatio: 0,
+          shadowOffsetRatio: 0,
+          letterSpacingRatio: 0,
+          background: "rgba(0,0,0,.62)",
+          pill: true
+        },
+
+        detailed: {
+          sample: "2026-08-31 23:35",
+          title: "Detailed Date + Time",
+          description: "Full ISO date and time for archival prints, contact sheets, documentation, and reference images.",
+          format: "detailed",
+          position: "bottom-right",
+          fontFamily: '"Courier New", Courier, monospace',
+          fontWeight: "700",
+          fillStyle: "#ffffff",
+          fontRatio: 0.023,
+          minimumFont: 22,
+          maximumFont: 155,
+          shadowColor: "rgba(0,0,0,.92)",
+          shadowBlurRatio: 0.07,
+          shadowOffsetRatio: 0.055,
+          letterSpacingRatio: 0
+        }
+      };
+
+      function pad(value) {
+        return String(value).padStart(2, "0");
+      }
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function monthAbbr(date) {
+        return ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][date.getMonth()];
+      }
+
+      function formatDate(date, format) {
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const shortYear = String(year).slice(-2);
+        const mon = monthAbbr(date);
+
+        switch (format) {
+          case "spaceDate":
+            return `${year} ${pad(month)} ${pad(day)}`;
+          case "dateBack":
+            return `${pad(day)} ${pad(month)} '${shortYear}`;
+          case "dashShort":
+            return `${pad(day)}-${pad(month)}-${shortYear}`;
+          case "slashShort":
+            return `${pad(month)}/${pad(day)}/${shortYear}`;
+          case "dots":
+            return `${year}.${pad(month)}.${pad(day)}`;
+          case "wideDateBack":
+            return `'${shortYear}  ${pad(month)}  ${pad(day)}`;
+          case "yyMMdd":
+            return `${shortYear}-${pad(month)}-${pad(day)}`;
+          case "dayMonthShortYear":
+            return `${pad(day)} ${mon} '${shortYear}`;
+          case "monthText":
+            return `${mon} ${pad(day)} ${year}`;
+          case "slashFull":
+            return `${year}/${pad(month)}/${pad(day)}`;
+          case "camcorder":
+            return `${pad(day)}.${mon}.${year}  ${pad(hours)}:${pad(minutes)}`;
+          case "miniDV":
+            return `${pad(day)} ${mon} ${year} ${pad(hours)}:${pad(minutes)}`;
+          case "vhs":
+            return `${mon}.${pad(day)}.${year}  ${pad(hours)}:${pad(minutes)}`;
+          case "classic":
+            return new Intl.DateTimeFormat("en", {
+              year: "numeric",
+              month: "long",
+              day: "numeric"
+            }).format(date);
+          case "detailed":
+            return `${year}-${pad(month)}-${pad(day)} ${pad(hours)}:${pad(minutes)}`;
+          default:
+            return `${year}-${pad(month)}-${pad(day)}`;
+        }
+      }
+
+      function formatReadableDate(date) {
+        return new Intl.DateTimeFormat(undefined, {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }).format(date);
+      }
+
+      function formatBytes(bytes) {
+        if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+        const units = ["B","KB","MB","GB"];
+        const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+        const value = bytes / Math.pow(1024, index);
+        return `${value.toFixed(index === 0 ? 0 : value >= 10 ? 1 : 2)} ${units[index]}`;
+      }
+
+      function isValidFile(file) {
+        const extension = file.name.split(".").pop()?.toLowerCase() || "";
+        return ACCEPTED_MIME_TYPES.has(file.type) || ACCEPTED_EXTENSIONS.has(extension);
+      }
+
+      function fileIdentity(file) {
+        return `${file.name}::${file.size}::${file.lastModified}`;
+      }
+
+      function parseExifDateValue(value) {
+        if (!value) return null;
+
+        if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+
+        if (typeof value === "number") {
+          const date = new Date(value);
+          return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        if (typeof value !== "string") return null;
+
+        const trimmed = value.trim();
+        const exifPattern = /^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?/;
+        const match = trimmed.match(exifPattern);
+
+        if (match) {
+          const date = new Date(
+            Number(match[1]),
+            Number(match[2]) - 1,
+            Number(match[3]),
+            Number(match[4]),
+            Number(match[5]),
+            Math.floor(Number(match[6] || 0))
+          );
+          return Number.isNaN(date.getTime()) ? null : date;
+        }
+
+        const parsed = new Date(trimmed);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+      }
+
+      async function readCaptureDate(file) {
+        if (window.exifr && typeof window.exifr.parse === "function") {
+          try {
+            const metadata = await window.exifr.parse(file, [
+              "DateTimeOriginal",
+              "CreateDate",
+              "DateTimeDigitized",
+              "ModifyDate"
+            ]);
+
+            const candidates = [
+              metadata?.DateTimeOriginal,
+              metadata?.CreateDate,
+              metadata?.DateTimeDigitized,
+              metadata?.ModifyDate
+            ];
+
+            for (const candidate of candidates) {
+              const parsed = parseExifDateValue(candidate);
+              if (parsed) return { date: parsed, source: "exif" };
+            }
+          } catch (error) {
+            console.warn("EXIF metadata could not be read:", file.name, error);
+          }
+        }
+
+        const fallback = new Date(file.lastModified || Date.now());
+        return {
+          date: Number.isNaN(fallback.getTime()) ? new Date() : fallback,
+          source: "fallback"
+        };
+      }
+
+      function showStatus(message, type = "info") {
+        elements.statusText.textContent = message;
+        elements.statusStrip.classList.add("visible");
+        elements.statusStrip.classList.toggle("warning", type === "warning");
+        elements.statusStrip.classList.toggle("error", type === "error");
+      }
+
+      function hideStatus() {
+        elements.statusStrip.classList.remove("visible", "warning", "error");
+        elements.statusText.textContent = "";
+      }
+
+      function setProgress(percent, label = "Processing") {
+        const safe = clamp(percent, 0, 100);
+        elements.progressWrap.classList.add("visible");
+        elements.progressLabel.textContent = label;
+        elements.progressPercent.textContent = `${Math.round(safe)}%`;
+        elements.progressBar.style.width = `${safe}%`;
+      }
+
+      function hideProgress() {
+        elements.progressWrap.classList.remove("visible");
+        elements.progressPercent.textContent = "0%";
+        elements.progressBar.style.width = "0%";
+      }
+
+      function setBusy(busy) {
+        state.busy = busy;
+        elements.fileInput.disabled = busy;
+        elements.presetSelect.disabled = busy;
+        elements.addMoreButton.disabled = busy;
+        elements.clearButton.disabled = busy;
+        elements.downloadAllButton.disabled = busy || state.photos.length === 0;
+
+        document.querySelectorAll(".card-action").forEach(button => {
+          button.disabled = busy;
+        });
+
+        if (busy) {
+          elements.downloadAllText.textContent = "Processing";
+          if (!elements.downloadAllButton.querySelector(".spinner")) {
+            const spinner = document.createElement("span");
+            spinner.className = "spinner";
+            elements.downloadAllButton.prepend(spinner);
+          }
+        } else {
+          elements.downloadAllText.textContent = "Download All";
+          elements.downloadAllButton.querySelector(".spinner")?.remove();
+        }
+      }
+
+      function updatePresetSample() {
+        const preset = PRESETS[state.preset];
+        elements.sampleDate.className = `sample-date ${state.preset}`;
+        elements.sampleDate.textContent = preset.sample;
+        elements.presetInfo.innerHTML = "";
+        const strong = document.createElement("strong");
+        strong.textContent = preset.title;
+        const span = document.createElement("span");
+        span.textContent = preset.description;
+        elements.presetInfo.append(strong, span);
+      }
+
+      function updateSummary() {
+        const count = state.photos.length;
+        const fallback = state.photos.filter(photo => photo.dateSource === "fallback").length;
+
+        elements.imageCount.textContent = `${count} ${count === 1 ? "photo" : "photos"}`;
+        elements.exportCount.textContent = String(count);
+        elements.fallbackCount.textContent = String(fallback);
+        elements.gallerySection.classList.toggle("hidden", count === 0);
+        elements.emptyState.classList.toggle("hidden", count !== 0);
+        elements.downloadAllButton.disabled = state.busy || count === 0;
+
+        if (count === 0) {
+          hideStatus();
+          return;
+        }
+
+        if (fallback > 0) {
+          showStatus(`${fallback} ${fallback === 1 ? "photo has" : "photos have"} no readable EXIF capture date. File Last Modified date will be used instead.`, "warning");
+        } else {
+          showStatus(`Original capture dates were found for all ${count} ${count === 1 ? "photo" : "photos"}.`);
+        }
+      }
+
+      function updatePreviewStamps() {
+        const preset = PRESETS[state.preset];
+
+        state.photos.forEach(photo => {
+          const card = document.querySelector(`.photo-card[data-photo-id="${photo.id}"]`);
+          if (!card) return;
+
+          const stamp = card.querySelector(".stamp-preview");
+          stamp.className = `stamp-preview ${state.preset}`;
+          stamp.textContent = formatDate(photo.date, preset.format);
+        });
+      }
+
+      function removePhoto(id) {
+        if (state.busy) return;
+
+        const index = state.photos.findIndex(photo => photo.id === id);
+        if (index === -1) return;
+
+        const [photo] = state.photos.splice(index, 1);
+        try { URL.revokeObjectURL(photo.objectUrl); } catch (_) {}
+
+        document.querySelector(`.photo-card[data-photo-id="${id}"]`)?.remove();
+        updateSummary();
+      }
+
+      function createPhotoCard(photo) {
+        const card = document.createElement("article");
+        card.className = "photo-card";
+        card.dataset.photoId = String(photo.id);
+
+        const preview = document.createElement("div");
+        preview.className = "photo-preview";
+
+        const image = document.createElement("img");
+        image.src = photo.objectUrl;
+        image.alt = "";
+        image.decoding = "async";
+
+        const stamp = document.createElement("span");
+        stamp.className = `stamp-preview ${state.preset}`;
+        stamp.textContent = formatDate(photo.date, PRESETS[state.preset].format);
+
+        preview.append(image, stamp);
+
+        const meta = document.createElement("div");
+        meta.className = "photo-meta";
+
+        const name = document.createElement("div");
+        name.className = "photo-name";
+        name.textContent = photo.file.name;
+        name.title = photo.file.name;
+
+        const details = document.createElement("div");
+        details.className = "photo-details";
+
+        const row = (label, valueNode) => {
+          const el = document.createElement("div");
+          el.className = "detail-row";
+          const l = document.createElement("span");
+          l.textContent = label;
+          el.append(l, valueNode);
+          return el;
+        };
+
+        const dateValue = document.createElement("strong");
+        dateValue.textContent = formatReadableDate(photo.date);
+
+        const dimensionsValue = document.createElement("strong");
+        dimensionsValue.textContent = "Reading…";
+
+        const sizeValue = document.createElement("strong");
+        sizeValue.textContent = formatBytes(photo.file.size);
+
+        const sourceBadge = document.createElement("span");
+        sourceBadge.className = `source-badge ${photo.dateSource === "exif" ? "exif" : "fallback"}`;
+        sourceBadge.textContent = photo.dateSource === "exif" ? "EXIF Date Taken" : "File modified";
+
+        details.append(
+          row("Date", dateValue),
+          row("Pixels", dimensionsValue),
+          row("File", sizeValue),
+          row("Source", sourceBadge)
+        );
+
+        const actions = document.createElement("div");
+        actions.className = "card-actions";
+
+        const download = document.createElement("button");
+        download.type = "button";
+        download.className = "card-action";
+        download.textContent = "Download";
+        download.addEventListener("click", () => downloadSinglePhoto(photo));
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "card-action remove";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => removePhoto(photo.id));
+
+        actions.append(download, remove);
+        meta.append(name, details, actions);
+        card.append(preview, meta);
+
+        image.addEventListener("load", () => {
+          photo.width = image.naturalWidth;
+          photo.height = image.naturalHeight;
+          dimensionsValue.textContent = `${image.naturalWidth.toLocaleString()} × ${image.naturalHeight.toLocaleString()}`;
+        }, { once: true });
+
+        image.addEventListener("error", () => {
+          dimensionsValue.textContent = "Unable to decode";
+        }, { once: true });
+
+        return card;
+      }
+
+      async function addFiles(fileList) {
+        if (state.busy) return;
+
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+
+        const existing = new Set(state.photos.map(photo => fileIdentity(photo.file)));
+        const valid = [];
+        let rejected = 0;
+        let duplicates = 0;
+
+        for (const file of files) {
+          if (!isValidFile(file)) {
+            rejected += 1;
+            continue;
+          }
+
+          const identity = fileIdentity(file);
+          if (existing.has(identity)) {
+            duplicates += 1;
+            continue;
+          }
+
+          existing.add(identity);
+          valid.push(file);
+        }
+
+        elements.fileInput.value = "";
+
+        if (!valid.length) {
+          if (rejected) showStatus("No supported photos were added. Use JPG, JPEG, or PNG.", "error");
+          else if (duplicates) showStatus("Those photos are already in the batch.");
+          return;
+        }
+
+        setBusy(true);
+        setProgress(0, "Reading photo dates");
+
+        try {
+          for (let i = 0; i < valid.length; i += 1) {
+            const file = valid[i];
+            const capture = await readCaptureDate(file);
+
+            const photo = {
+              id: state.nextId++,
+              file,
+              objectUrl: URL.createObjectURL(file),
+              date: capture.date,
+              dateSource: capture.source,
+              width: null,
+              height: null
+            };
+
+            state.photos.push(photo);
+            elements.gallery.appendChild(createPhotoCard(photo));
+            setProgress(((i + 1) / valid.length) * 100, "Reading photo dates");
+            await nextFrame();
+          }
+        } finally {
+          setBusy(false);
+          hideProgress();
+          updateSummary();
+        }
+
+        if (rejected) {
+          showStatus(`${valid.length} ${valid.length === 1 ? "photo was" : "photos were"} added. ${rejected} unsupported ${rejected === 1 ? "file was" : "files were"} skipped.`, "warning");
+        }
+      }
+
+      function nextFrame() {
+        return new Promise(resolve => requestAnimationFrame(resolve));
+      }
+
+      function loadImage(url) {
+        return new Promise((resolve, reject) => {
+          const img = new Image();
+          img.decoding = "async";
+          img.onload = () => resolve(img);
+          img.onerror = () => reject(new Error("The image could not be decoded."));
+          img.src = url;
+        });
+      }
+
+      function roundedRectPath(ctx, x, y, w, h, r) {
+        const radius = Math.min(r, w / 2, h / 2);
+        ctx.beginPath();
+        ctx.moveTo(x + radius, y);
+        ctx.lineTo(x + w - radius, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
+        ctx.lineTo(x + w, y + h - radius);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
+        ctx.lineTo(x + radius, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
+        ctx.lineTo(x, y + radius);
+        ctx.quadraticCurveTo(x, y, x + radius, y);
+        ctx.closePath();
+      }
+
+      function measureTextWithSpacing(ctx, text, spacing) {
+        if (!spacing) return ctx.measureText(text).width;
+
+        let width = 0;
+        for (let i = 0; i < text.length; i += 1) {
+          width += ctx.measureText(text[i]).width;
+          if (i < text.length - 1) width += spacing;
+        }
+        return width;
+      }
+
+      function drawTextWithSpacing(ctx, text, x, y, spacing) {
+        if (!spacing) {
+          ctx.fillText(text, x, y);
+          return;
+        }
+
+        let cursor = x;
+        for (let i = 0; i < text.length; i += 1) {
+          const char = text[i];
+          ctx.fillText(char, cursor, y);
+          cursor += ctx.measureText(char).width + spacing;
+        }
+      }
+
+      function calculateLayout(ctx, canvas, text, preset) {
+        const shortSide = Math.min(canvas.width, canvas.height);
+        const longSide = Math.max(canvas.width, canvas.height);
+
+        let fontSize = clamp(shortSide * preset.fontRatio, preset.minimumFont, preset.maximumFont);
+        let spacing = fontSize * preset.letterSpacingRatio;
+        const maxWidth = canvas.width * .88;
+
+        while (fontSize > preset.minimumFont) {
+          ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
+          spacing = fontSize * preset.letterSpacingRatio;
+          const width = measureTextWithSpacing(ctx, text, spacing);
+          const extra = preset.background ? fontSize * 1.4 : 0;
+
+          if (width + extra <= maxWidth) break;
+          fontSize *= .94;
+        }
+
+        ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
+        spacing = fontSize * preset.letterSpacingRatio;
+
+        const metrics = ctx.measureText(text);
+        const measuredWidth = measureTextWithSpacing(ctx, text, spacing);
+        const ascent = metrics.actualBoundingBoxAscent || fontSize * .8;
+        const descent = metrics.actualBoundingBoxDescent || fontSize * .2;
+        const textHeight = ascent + descent;
+        const margin = clamp(shortSide * .025, fontSize * .75, longSide * .055);
+
+        return { fontSize, spacing, measuredWidth, ascent, descent, textHeight, margin };
+      }
+
+      function drawTimestamp(ctx, canvas, date, presetName) {
+        const preset = PRESETS[presetName];
+        const text = formatDate(date, preset.format);
+        const layout = calculateLayout(ctx, canvas, text, preset);
+
+        const { fontSize, spacing, measuredWidth, ascent, descent, textHeight, margin } = layout;
+
+        let x;
+        let baselineY;
+
+        if (preset.position === "top-left") {
+          x = margin;
+          baselineY = margin + ascent;
+        } else if (preset.position === "bottom-left") {
+          x = margin;
+          baselineY = canvas.height - margin - descent;
+        } else {
+          x = canvas.width - margin - measuredWidth;
+          baselineY = canvas.height - margin - descent;
+        }
+
+        ctx.save();
+        ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "alphabetic";
+
+        if (preset.background) {
+          const padX = fontSize * .7;
+          const padY = fontSize * .42;
+          const boxW = measuredWidth + padX * 2;
+          const boxH = textHeight + padY * 2;
+
+          let boxX;
+          let boxY;
+
+          if (preset.position === "top-left") {
+            boxX = margin;
+            boxY = margin;
+          } else if (preset.position === "bottom-left") {
+            boxX = margin;
+            boxY = canvas.height - margin - boxH;
+          } else {
+            boxX = canvas.width - margin - boxW;
+            boxY = canvas.height - margin - boxH;
+          }
+
+          const radius = preset.pill ? boxH / 2 : fontSize * (preset.boxRadiusRatio || .04);
+
+          ctx.fillStyle = preset.background;
+          roundedRectPath(ctx, boxX, boxY, boxW, boxH, radius);
+          ctx.fill();
+
+          if (preset.borderColor) {
+            ctx.strokeStyle = preset.borderColor;
+            ctx.lineWidth = Math.max(1, fontSize * .025);
+            ctx.stroke();
+          }
+
+          x = boxX + padX;
+          baselineY = boxY + padY + ascent;
+        } else {
+          if (preset.glowColor) {
+            ctx.fillStyle = preset.fillStyle;
+            ctx.shadowColor = preset.glowColor;
+            ctx.shadowBlur = fontSize * .09;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            drawTextWithSpacing(ctx, text, x, baselineY, spacing);
+          }
+
+          ctx.shadowColor = preset.shadowColor || "transparent";
+          ctx.shadowBlur = fontSize * (preset.shadowBlurRatio || 0);
+          ctx.shadowOffsetX = fontSize * (preset.shadowOffsetRatio || 0);
+          ctx.shadowOffsetY = fontSize * (preset.shadowOffsetRatio || 0);
+        }
+
+        ctx.fillStyle = preset.fillStyle;
+        drawTextWithSpacing(ctx, text, x, baselineY, spacing);
+        ctx.restore();
+      }
+
+      async function renderPhoto(photo, presetName) {
+        const image = await loadImage(photo.objectUrl);
+        const width = image.naturalWidth;
+        const height = image.naturalHeight;
+
+        if (!width || !height) throw new Error("Invalid image dimensions.");
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+
+        if (canvas.width !== width || canvas.height !== height) {
+          throw new Error("This browser cannot allocate a canvas at the original resolution.");
+        }
+
+        const ctx = canvas.getContext("2d", { alpha: false, desynchronized: false });
+        if (!ctx) throw new Error("Canvas rendering is unavailable.");
+
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.drawImage(image, 0, 0, width, height);
+
+        drawTimestamp(ctx, canvas, photo.date, presetName);
+
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(result => {
+            if (result) resolve(result);
+            else reject(new Error("The browser could not create the final JPEG."));
+          }, "image/jpeg", 1.0);
+        });
+
+        canvas.width = 1;
+        canvas.height = 1;
+
+        return { blob, width, height };
+      }
+
+      function safeBaseName(filename) {
+        const withoutExtension = filename.replace(/\.[^.]+$/, "");
+        const cleaned = withoutExtension
+          .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
+          .replace(/\s+/g, " ")
+          .trim();
+        return cleaned || "photo";
+      }
+
+      function uniqueOutputName(filename, counts) {
+        const base = safeBaseName(filename);
+        const current = (counts.get(base) || 0) + 1;
+        counts.set(base, current);
+        return current === 1 ? `${base}_dated.jpg` : `${base}_dated_${current}.jpg`;
+      }
+
+      function triggerDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.rel = "noopener";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2500);
+      }
+
+      function zipFilename() {
+        const now = new Date();
+        return `dated_photos_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
+      }
+
+      async function downloadSinglePhoto(photo) {
+        if (state.busy) return;
+
+        setBusy(true);
+        setProgress(5, "Rendering original resolution");
+
+        try {
+          const result = await renderPhoto(photo, state.preset);
+          setProgress(100, "Ready");
+          triggerDownload(result.blob, `${safeBaseName(photo.file.name)}_dated.jpg`);
+          showStatus(`${photo.file.name} exported at ${result.width.toLocaleString()} × ${result.height.toLocaleString()} pixels.`);
+        } catch (error) {
+          console.error(error);
+          showStatus(`Could not export ${photo.file.name}. ${error.message || "Image processing failed."}`, "error");
+        } finally {
+          await nextFrame();
+          setBusy(false);
+          hideProgress();
+        }
+      }
+
+      async function downloadAll() {
+        if (state.busy || !state.photos.length) return;
+
+        const photos = [...state.photos];
+        const names = new Map();
+
+        setBusy(true);
+        setProgress(0, "Rendering full-resolution photos");
+
+        try {
+          if (window.JSZip) {
+            const zip = new JSZip();
+
+            for (let i = 0; i < photos.length; i += 1) {
+              const photo = photos[i];
+              setProgress((i / photos.length) * 82, `Rendering ${i + 1} of ${photos.length}`);
+
+              const result = await renderPhoto(photo, state.preset);
+              zip.file(uniqueOutputName(photo.file.name, names), result.blob, {
+                binary: true,
+                compression: "STORE"
+              });
+
+              await nextFrame();
+            }
+
+            setProgress(86, "Building ZIP");
+
+            const zipBlob = await zip.generateAsync(
+              { type: "blob", compression: "STORE", platform: "DOS" },
+              metadata => setProgress(86 + metadata.percent * .14, "Building ZIP")
+            );
+
+            setProgress(100, "Ready");
+            triggerDownload(zipBlob, zipFilename());
+          } else {
+            for (let i = 0; i < photos.length; i += 1) {
+              const photo = photos[i];
+              setProgress((i / photos.length) * 100, `Rendering ${i + 1} of ${photos.length}`);
+
+              const result = await renderPhoto(photo, state.preset);
+              triggerDownload(result.blob, uniqueOutputName(photo.file.name, names));
+              await new Promise(resolve => setTimeout(resolve, 120));
+            }
+            setProgress(100, "Ready");
+          }
+
+          const fallback = photos.filter(photo => photo.dateSource === "fallback").length;
+          showStatus(
+            `${photos.length} ${photos.length === 1 ? "photo was" : "photos were"} exported at original pixel dimensions using JPEG quality 1.0.${fallback ? ` ${fallback} ${fallback === 1 ? "image used" : "images used"} the file modified date.` : ""}`,
+            fallback ? "warning" : "info"
+          );
+        } catch (error) {
+          console.error(error);
+          showStatus(`Batch export stopped. ${error.message || "Image processing failed."}`, "error");
+        } finally {
+          await nextFrame();
+          setBusy(false);
+          hideProgress();
+        }
+      }
+
+      function clearAll() {
+        if (state.busy) return;
+
+        state.photos.forEach(photo => {
+          try { URL.revokeObjectURL(photo.objectUrl); } catch (_) {}
+        });
+
+        state.photos = [];
+        elements.gallery.replaceChildren();
+        elements.fileInput.value = "";
+        updateSummary();
+      }
+
+      elements.presetSelect.addEventListener("change", event => {
+        state.preset = event.target.value;
+        updatePresetSample();
+        updatePreviewStamps();
+      });
+
+      elements.dropZone.addEventListener("click", () => {
+        if (!state.busy) elements.fileInput.click();
+      });
+
+      elements.dropZone.addEventListener("keydown", event => {
+        if (!state.busy && (event.key === "Enter" || event.key === " ")) {
+          event.preventDefault();
+          elements.fileInput.click();
+        }
+      });
+
+      elements.fileInput.addEventListener("change", event => addFiles(event.target.files));
+
+      elements.addMoreButton.addEventListener("click", () => {
+        if (!state.busy) elements.fileInput.click();
+      });
+
+      elements.clearButton.addEventListener("click", clearAll);
+      elements.downloadAllButton.addEventListener("click", downloadAll);
+
+      ["dragenter","dragover"].forEach(eventName => {
+        elements.dropZone.addEventListener(eventName, event => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!state.busy) elements.dropZone.classList.add("dragover");
+        });
+      });
+
+      ["dragleave","drop"].forEach(eventName => {
+        elements.dropZone.addEventListener(eventName, event => {
+          event.preventDefault();
+          event.stopPropagation();
+          elements.dropZone.classList.remove("dragover");
+        });
+      });
+
+      elements.dropZone.addEventListener("drop", event => {
+        if (!state.busy) addFiles(event.dataTransfer.files);
+      });
+
+      window.addEventListener("beforeunload", () => {
+        state.photos.forEach(photo => {
+          try { URL.revokeObjectURL(photo.objectUrl); } catch (_) {}
+        });
+      });
+
+      updatePresetSample();
+      updateSummary();
+
+      if (!window.exifr) {
+        showStatus("The EXIF library could not load. Photos can still be processed using each file's Last Modified date.", "warning");
+      }
+    })();
+  </script>
+</body>
+</html>
