@@ -7,6 +7,8 @@
   <meta name="theme-color" content="#0c0d10">
   <meta name="referrer" content="no-referrer">
   <title>Photo Date Burn</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js" referrerpolicy="no-referrer"></script>
   <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" referrerpolicy="no-referrer"></script>
@@ -102,6 +104,10 @@
       color: var(--muted);
       font-size: .9rem;
     }
+
+    .brand-copy .credit { margin-top: 2px; font-size: .82rem; }
+    .brand-copy .credit a { color: var(--accent); text-decoration: none; }
+    .brand-copy .credit a:hover { text-decoration: underline; }
 
     .privacy-pill {
       display: inline-flex;
@@ -878,6 +884,7 @@
         <div class="brand-copy">
           <h1>Photo Date Burn</h1>
           <p>Batch-burn original capture dates onto full-resolution photographs.</p>
+          <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a></p>
         </div>
       </div>
 
@@ -2080,6 +2087,7 @@
 
         const photos = [...state.photos];
         const names = new Map();
+        const failed = [];
 
         setBusy(true);
         setProgress(0, "Rendering full-resolution photos");
@@ -2092,14 +2100,21 @@
               const photo = photos[i];
               setProgress((i / photos.length) * 82, `Rendering ${i + 1} of ${photos.length}`);
 
-              const result = await renderPhoto(photo, state.preset);
-              zip.file(uniqueOutputName(photo.file.name, names), result.blob, {
-                binary: true,
-                compression: "STORE"
-              });
+              try {
+                const result = await renderPhoto(photo, state.preset);
+                zip.file(uniqueOutputName(photo.file.name, names), result.blob, {
+                  binary: true,
+                  compression: "STORE"
+                });
+              } catch (error) {
+                console.error(error);
+                failed.push(photo.file.name);
+              }
 
               await nextFrame();
             }
+
+            if (failed.length === photos.length) throw new Error("None of the photos could be rendered at full resolution in this browser.");
 
             setProgress(86, "Building ZIP");
 
@@ -2115,17 +2130,23 @@
               const photo = photos[i];
               setProgress((i / photos.length) * 100, `Rendering ${i + 1} of ${photos.length}`);
 
-              const result = await renderPhoto(photo, state.preset);
-              triggerDownload(result.blob, uniqueOutputName(photo.file.name, names));
+              try {
+                const result = await renderPhoto(photo, state.preset);
+                triggerDownload(result.blob, uniqueOutputName(photo.file.name, names));
+              } catch (error) {
+                console.error(error);
+                failed.push(photo.file.name);
+              }
               await new Promise(resolve => setTimeout(resolve, 120));
             }
             setProgress(100, "Ready");
           }
 
           const fallback = photos.filter(photo => photo.dateSource === "fallback").length;
+          const done = photos.length - failed.length;
           showStatus(
-            `${photos.length} ${photos.length === 1 ? "photo was" : "photos were"} exported at original pixel dimensions using JPEG quality 1.0.${fallback ? ` ${fallback} ${fallback === 1 ? "image used" : "images used"} the file modified date.` : ""}`,
-            fallback ? "warning" : "info"
+            `${done} ${done === 1 ? "photo was" : "photos were"} exported at original pixel dimensions using JPEG quality 1.0.${fallback ? ` ${fallback} ${fallback === 1 ? "image used" : "images used"} the file modified date.` : ""}${failed.length ? ` Could not render: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? ` and ${failed.length - 3} more` : ""}. These may be too large for this browser.` : ""}`,
+            fallback || failed.length ? "warning" : "info"
           );
         } catch (error) {
           console.error(error);
