@@ -1,2235 +1,804 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0c0d10">
-  <meta name="referrer" content="no-referrer">
-  <title>Photo Date Burn</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>DateStamp</title>
+<meta name="description" content="Burn each photo's original Date Taken onto the image at full resolution, in your browser.">
+<meta name="theme-color" content="#0d0f14">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-
-  <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js" referrerpolicy="no-referrer"></script>
-
-  <style>
-    :root {
-      --bg: #0c0d10;
-      --panel: #15171b;
-      --panel-2: #1c1f24;
-      --panel-3: #23272e;
-      --border: #2d323a;
-      --border-hover: #454c57;
-      --text: #f5f6f7;
-      --muted: #9aa3ad;
-      --muted-2: #707985;
-      --accent: #f1a33a;
-      --accent-2: #ffb14b;
-      --success: #69cf98;
-      --warning: #e7b85a;
-      --danger: #ed7777;
-      --radius: 16px;
-      --shadow: 0 22px 70px rgba(0,0,0,.28);
-    }
-
-    * { box-sizing: border-box; }
-
-    html { background: var(--bg); }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(241,163,58,.07), transparent 32rem),
-        radial-gradient(circle at 80% 15%, rgba(79,122,255,.035), transparent 26rem),
-        var(--bg);
-      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      line-height: 1.5;
-    }
-
-    button, select, input { font: inherit; }
-
-    button { border: 0; }
-
-    button:focus-visible,
-    select:focus-visible,
-    .drop-zone:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 3px;
-    }
-
-    .app {
-      width: min(1540px, calc(100% - 30px));
-      margin: 0 auto;
-      padding: 26px 0 48px;
-    }
-
-    .topbar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 24px;
-      margin-bottom: 22px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 13px;
-    }
-
-    .brand-mark {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-      border-radius: 14px;
-      background: var(--accent);
-      color: #17110a;
-      font-weight: 900;
-      letter-spacing: -.04em;
-      box-shadow: 0 12px 34px rgba(241,163,58,.18);
-    }
-
-    .brand-copy h1 {
-      margin: 0;
-      font-size: clamp(1.35rem, 2vw, 1.75rem);
-      letter-spacing: -.035em;
-    }
-
-    .brand-copy p {
-      margin: 3px 0 0;
-      color: var(--muted);
-      font-size: .9rem;
-    }
-
-    .brand-copy .credit { margin-top: 2px; font-size: .82rem; }
-    .brand-copy .credit a { color: var(--accent); text-decoration: none; }
-    .brand-copy .credit a:hover { text-decoration: underline; }
-
-    .privacy-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 12px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      color: var(--muted);
-      background: rgba(21,23,27,.82);
-      font-size: .8rem;
-      white-space: nowrap;
-    }
-
-    .privacy-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 0 4px rgba(105,207,152,.1);
-    }
-
-    .workspace {
-      display: grid;
-      grid-template-columns: 365px minmax(0,1fr);
-      gap: 20px;
-      align-items: start;
-    }
-
-    .sidebar {
-      position: sticky;
-      top: 18px;
-      display: grid;
-      gap: 16px;
-    }
-
-    .panel {
-      background: rgba(21,23,27,.95);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-    }
-
-    .panel-body { padding: 18px; }
-
-    .panel-title {
-      margin: 0 0 4px;
-      font-size: .98rem;
-      font-weight: 750;
-    }
-
-    .panel-description {
-      margin: 0 0 15px;
-      color: var(--muted);
-      font-size: .8rem;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
-      margin-bottom: 14px;
-    }
-
-    .field label {
-      color: #d9dee4;
-      font-size: .78rem;
-      font-weight: 700;
-    }
-
-    select {
-      width: 100%;
-      min-height: 44px;
-      padding: 0 38px 0 12px;
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background:
-        linear-gradient(45deg, transparent 50%, var(--muted) 50%) calc(100% - 17px) 18px / 5px 5px no-repeat,
-        linear-gradient(135deg, var(--muted) 50%, transparent 50%) calc(100% - 12px) 18px / 5px 5px no-repeat,
-        var(--panel-2);
-      appearance: none;
-      cursor: pointer;
-    }
-
-    select:hover { border-color: var(--border-hover); }
-
-    .preset-example {
-      position: relative;
-      min-height: 174px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      background:
-        linear-gradient(to top, rgba(0,0,0,.44), transparent 62%),
-        radial-gradient(circle at 70% 24%, rgba(255,255,255,.14), transparent 22%),
-        linear-gradient(155deg, #5c6466 0%, #25282d 48%, #7e8177 100%);
-    }
-
-    .preset-example::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background:
-        repeating-linear-gradient(0deg, rgba(255,255,255,.012), rgba(255,255,255,.012) 1px, transparent 1px, transparent 3px);
-      mix-blend-mode: screen;
-    }
-
-    .sample-date,
-    .stamp-preview {
-      position: absolute;
-      z-index: 2;
-      white-space: nowrap;
-      line-height: 1;
-      pointer-events: none;
-    }
-
-    .sample-date { font-size: 14px; }
-
-    .preset-info {
-      min-height: 64px;
-      margin-top: 11px;
-      padding: 10px 11px;
-      border-radius: 10px;
-      background: var(--panel-2);
-      border: 1px solid rgba(255,255,255,.035);
-      color: var(--muted);
-      font-size: .73rem;
-    }
-
-    .preset-info strong {
-      display: block;
-      color: #dfe4e8;
-      margin-bottom: 2px;
-      font-size: .75rem;
-    }
-
-    .retro-orange {
-      right: 5%;
-      bottom: 6%;
-      color: #ff8b00;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .08em;
-      text-shadow: 1px 1px 1px #000, 0 0 2px rgba(0,0,0,.7);
-    }
-
-    .retro-red {
-      right: 5%;
-      bottom: 6%;
-      color: #ff3d32;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .09em;
-      text-shadow: 0 0 3px rgba(255,61,50,.35), 1px 1px 1px #000;
-    }
-
-    .retro-amber {
-      right: 5%;
-      bottom: 6%;
-      color: #ffad34;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .065em;
-      text-shadow: 1px 1px 1px #000;
-    }
-
-    .retro-yellow {
-      right: 5%;
-      bottom: 6%;
-      color: #ffda42;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .07em;
-      text-shadow: 1px 1px 1px #000;
-    }
-
-    .retro-green {
-      right: 5%;
-      bottom: 6%;
-      color: #79f06e;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .05em;
-      text-shadow: 0 0 3px rgba(121,240,110,.35), 1px 1px 1px #000;
-    }
-
-    .retro-blue {
-      right: 5%;
-      bottom: 6%;
-      color: #64c5ff;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .055em;
-      text-shadow: 0 0 3px rgba(100,197,255,.3), 1px 1px 1px #000;
-    }
-
-    .retro-compact {
-      right: 5%;
-      bottom: 6%;
-      color: #ff674c;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .025em;
-      text-shadow: 1px 1px 0 #000;
-    }
-
-    .retro-dateback {
-      left: 5%;
-      bottom: 6%;
-      color: #ff6049;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .13em;
-      text-shadow: 1px 1px 0 rgba(0,0,0,.95);
-    }
-
-    .retro-yy-mm-dd {
-      right: 5%;
-      bottom: 6%;
-      color: #ff8735;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .05em;
-      text-shadow: 1px 1px 0 rgba(0,0,0,.95);
-    }
-
-    .retro-month-name {
-      right: 5%;
-      bottom: 6%;
-      color: #ff533d;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .055em;
-      text-shadow: 1px 1px 0 #000;
-    }
-
-    .retro-polaroid {
-      left: 5%;
-      bottom: 6%;
-      color: #fff0b3;
-      font-family: "Courier New", monospace;
-      font-weight: 700;
-      letter-spacing: .02em;
-      text-shadow: 1px 1px 2px rgba(0,0,0,.9);
-    }
-
-    .retro-camcorder {
-      left: 5%;
-      bottom: 6%;
-      color: #f5f5f5;
-      background: rgba(0,0,0,.72);
-      padding: .45em .6em;
-      border-radius: 2px;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .03em;
-    }
-
-    .retro-minidv {
-      left: 5%;
-      bottom: 6%;
-      color: #fff;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .045em;
-      text-shadow: 2px 2px 0 #000;
-    }
-
-    .retro-vhs {
-      left: 5%;
-      top: 7%;
-      color: #fff;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .045em;
-      text-shadow: 2px 2px 0 #000;
-    }
-
-    .retro-lcd {
-      right: 5%;
-      bottom: 6%;
-      color: #151812;
-      background: rgba(194,211,145,.82);
-      padding: .42em .58em;
-      border: 1px solid rgba(20,24,14,.6);
-      border-radius: 2px;
-      font-family: "Courier New", monospace;
-      font-weight: 900;
-      letter-spacing: .025em;
-    }
-
-    .classic {
-      right: 5%;
-      bottom: 6%;
-      color: #fff;
-      font-family: Georgia, "Times New Roman", serif;
-      font-weight: 700;
-      text-shadow: 0 2px 5px rgba(0,0,0,.95);
-    }
-
-    .modern {
-      left: 5%;
-      bottom: 6%;
-      color: #fff;
-      padding: .48em .7em;
-      border-radius: 999px;
-      background: rgba(0,0,0,.62);
-      font-family: Arial, Helvetica, sans-serif;
-      font-weight: 650;
-    }
-
-    .detailed {
-      right: 5%;
-      bottom: 6%;
-      color: #fff;
-      font-family: "Courier New", monospace;
-      font-weight: 700;
-      text-shadow: 0 2px 4px rgba(0,0,0,.95);
-    }
-
-    .resolution-note {
-      display: flex;
-      gap: 10px;
-      padding: 12px;
-      margin-top: 14px;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      border-radius: 11px;
-    }
-
-    .resolution-icon {
-      flex: 0 0 auto;
-      width: 30px;
-      height: 30px;
-      display: grid;
-      place-items: center;
-      border-radius: 8px;
-      background: rgba(241,163,58,.12);
-      color: var(--accent);
-      font-size: .8rem;
-      font-weight: 900;
-    }
-
-    .resolution-note strong {
-      display: block;
-      margin-bottom: 2px;
-      font-size: .77rem;
-    }
-
-    .resolution-note span {
-      display: block;
-      color: var(--muted);
-      font-size: .71rem;
-      line-height: 1.45;
-    }
-
-    .button {
-      min-height: 44px;
-      padding: 0 15px;
-      border-radius: 10px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      cursor: pointer;
-      transition: background 120ms ease, border-color 120ms ease, opacity 120ms ease, transform 120ms ease;
-    }
-
-    .button:active:not(:disabled) { transform: translateY(1px); }
-
-    .button-primary {
-      width: 100%;
-      background: var(--accent);
-      color: #17110a;
-      font-weight: 850;
-    }
-
-    .button-primary:hover:not(:disabled) { background: var(--accent-2); }
-
-    .button-ghost {
-      min-height: 36px;
-      padding: 0 11px;
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: .76rem;
-      font-weight: 650;
-    }
-
-    .button-ghost:hover:not(:disabled) {
-      color: var(--text);
-      border-color: var(--border-hover);
-    }
-
-    .button:disabled {
-      opacity: .42;
-      cursor: not-allowed;
-    }
-
-    .export-panel .panel-body {
-      display: grid;
-      gap: 12px;
-    }
-
-    .export-summary {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      color: var(--muted);
-      font-size: .76rem;
-    }
-
-    .export-summary strong { color: var(--text); }
-
-    .progress-wrap { display: none; }
-    .progress-wrap.visible { display: block; }
-
-    .progress-meta {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 7px;
-      color: var(--muted);
-      font-size: .7rem;
-    }
-
-    .progress-track {
-      height: 7px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: var(--panel-3);
-    }
-
-    .progress-bar {
-      height: 100%;
-      width: 0%;
-      border-radius: inherit;
-      background: var(--accent);
-      transition: width 160ms ease;
-    }
-
-    .spinner {
-      width: 15px;
-      height: 15px;
-      border: 2px solid rgba(23,17,10,.25);
-      border-top-color: #17110a;
-      border-radius: 50%;
-      animation: spin .75s linear infinite;
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .main { min-width: 0; }
-
-    .drop-zone {
-      min-height: 190px;
-      padding: 28px;
-      display: grid;
-      place-items: center;
-      text-align: center;
-      border: 1.5px dashed #3b424c;
-      border-radius: var(--radius);
-      background: rgba(21,23,27,.94);
-      cursor: pointer;
-      transition: border-color 140ms ease, background 140ms ease, transform 140ms ease;
-    }
-
-    .drop-zone:hover,
-    .drop-zone.dragover {
-      border-color: var(--accent);
-      background: rgba(241,163,58,.055);
-    }
-
-    .drop-zone.dragover { transform: scale(.997); }
-
-    .drop-inner { max-width: 560px; }
-
-    .upload-icon {
-      width: 52px;
-      height: 52px;
-      margin: 0 auto 13px;
-      display: grid;
-      place-items: center;
-      border-radius: 15px;
-      background: rgba(241,163,58,.12);
-      color: var(--accent);
-      font-size: 25px;
-    }
-
-    .drop-zone h2 {
-      margin: 0 0 6px;
-      font-size: 1rem;
-    }
-
-    .drop-zone p {
-      margin: 0;
-      color: var(--muted);
-      font-size: .82rem;
-    }
-
-    .drop-zone .formats {
-      margin-top: 9px;
-      color: var(--muted-2);
-      font-size: .71rem;
-    }
-
-    .browse-text {
-      color: var(--accent);
-      font-weight: 750;
-    }
-
-    #fileInput {
-      position: fixed;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
-      pointer-events: none;
-    }
-
-    .status-strip {
-      margin-top: 14px;
-      display: none;
-      gap: 10px;
-      padding: 11px 13px;
-      border: 1px solid var(--border);
-      border-radius: 11px;
-      background: var(--panel);
-      color: var(--muted);
-      font-size: .76rem;
-    }
-
-    .status-strip.visible {
-      display: flex;
-      align-items: flex-start;
-    }
-
-    .status-strip.warning {
-      border-color: rgba(231,184,90,.3);
-      background: rgba(231,184,90,.06);
-      color: #d9c594;
-    }
-
-    .status-strip.error {
-      border-color: rgba(237,119,119,.3);
-      background: rgba(237,119,119,.06);
-      color: #e0a6a6;
-    }
-
-    .status-icon {
-      flex: 0 0 auto;
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: var(--panel-3);
-      color: var(--accent);
-      font-size: .66rem;
-      font-weight: 900;
-    }
-
-    .gallery-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
-      margin: 24px 0 13px;
-    }
-
-    .gallery-heading {
-      display: flex;
-      align-items: baseline;
-      gap: 9px;
-    }
-
-    .gallery-heading h2 {
-      margin: 0;
-      font-size: 1rem;
-    }
-
-    .image-count {
-      color: var(--muted);
-      font-size: .76rem;
-    }
-
-    .gallery-actions {
-      display: flex;
-      gap: 8px;
-    }
-
-    .gallery {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(245px, 1fr));
-      gap: 14px;
-    }
-
-    .photo-card {
-      min-width: 0;
-      overflow: hidden;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-    }
-
-    .photo-preview {
-      position: relative;
-      aspect-ratio: 4 / 3;
-      overflow: hidden;
-      container-type: inline-size;
-      background:
-        linear-gradient(45deg, #191d22 25%, transparent 25%),
-        linear-gradient(-45deg, #191d22 25%, transparent 25%),
-        linear-gradient(45deg, transparent 75%, #191d22 75%),
-        linear-gradient(-45deg, transparent 75%, #191d22 75%),
-        #121519;
-      background-size: 18px 18px;
-      background-position: 0 0, 0 9px, 9px -9px, -9px 0;
-    }
-
-    .photo-preview img {
-      width: 100%;
-      height: 100%;
-      display: block;
-      object-fit: contain;
-    }
-
-    .stamp-preview {
-      max-width: 90%;
-      font-size: clamp(9px, 4.1cqw, 18px);
-    }
-
-    .photo-meta { padding: 12px; }
-
-    .photo-name {
-      margin-bottom: 7px;
-      overflow: hidden;
-      color: #e9edf1;
-      font-size: .8rem;
-      font-weight: 700;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .photo-details {
-      display: grid;
-      gap: 6px;
-    }
-
-    .detail-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-width: 0;
-      color: var(--muted);
-      font-size: .69rem;
-    }
-
-    .detail-row strong {
-      overflow: hidden;
-      color: #cdd3da;
-      font-weight: 600;
-      text-align: right;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .source-badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 4px 7px;
-      border-radius: 999px;
-      font-size: .63rem;
-      font-weight: 700;
-    }
-
-    .source-badge.exif {
-      background: rgba(105,207,152,.09);
-      color: #86d9af;
-    }
-
-    .source-badge.fallback {
-      background: rgba(231,184,90,.1);
-      color: #dfbd74;
-    }
-
-    .card-actions {
-      display: flex;
-      gap: 7px;
-      padding-top: 10px;
-      margin-top: 10px;
-      border-top: 1px solid var(--border);
-    }
-
-    .card-action {
-      flex: 1;
-      min-height: 34px;
-      border-radius: 8px;
-      background: var(--panel-2);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      cursor: pointer;
-      font-size: .68rem;
-      font-weight: 700;
-    }
-
-    .card-action:hover:not(:disabled) {
-      color: var(--text);
-      border-color: var(--border-hover);
-    }
-
-    .card-action.remove:hover {
-      color: #f3a3a3;
-      border-color: rgba(237,119,119,.35);
-    }
-
-    .card-action:disabled {
-      opacity: .45;
-      cursor: not-allowed;
-    }
-
-    .empty-state {
-      margin-top: 14px;
-      padding: 36px 18px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: rgba(21,23,27,.5);
-      text-align: center;
-      color: var(--muted);
-      font-size: .8rem;
-    }
-
-    .hidden { display: none !important; }
-
-    @media (max-width: 940px) {
-      .workspace { grid-template-columns: 1fr; }
-      .sidebar {
-        position: static;
-        grid-template-columns: 1fr 1fr;
-      }
-      .controls-panel { grid-row: span 2; }
-    }
-
-    @media (max-width: 680px) {
-      .app {
-        width: min(100% - 20px, 1540px);
-        padding-top: 18px;
-      }
-
-      .topbar { display: grid; }
-      .privacy-pill { justify-self: start; }
-      .sidebar { grid-template-columns: 1fr; }
-      .controls-panel { grid-row: auto; }
-
-      .gallery {
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-    }
-
-    @media (max-width: 470px) {
-      .gallery { grid-template-columns: 1fr; }
-      .gallery-actions { flex-direction: column; }
-      .brand-copy p { max-width: 260px; }
-    }
-  </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Stamp fonts only. Subset to the characters a stamp can contain, loaded without blocking the page. -->
+<link id="stampFonts" rel="stylesheet" media="print" onload="this.media='all'"
+      href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Playfair+Display:wght@600&family=Inter:wght@600&text=0123456789-%3A%20&display=swap">
+<style>
+  :root{
+    --bg:#0d0f14;
+    --bg-elev:#151922;
+    --bg-elev-2:#1c212d;
+    --border:#262c3a;
+    --border-hi:#374156;
+    --text:#e6e9ef;
+    --text-dim:#8b94a7;
+    --text-faint:#5b6478;
+    --accent:#5b8cff;
+    --accent-hi:#7aa2ff;
+    --success:#3fd18b;
+    --warn:#f5b544;
+    --danger:#ff6b6b;
+    --radius:14px;
+    --radius-sm:9px;
+    --shadow:0 8px 30px rgba(0,0,0,.45);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:radial-gradient(1200px 800px at 80% -10%, #171d2b 0%, var(--bg) 55%) no-repeat, var(--bg);
+    color:var(--text);
+    font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:1240px;margin:0 auto;padding:32px 24px 80px}
+
+  header{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+  .logo{
+    width:44px;height:44px;border-radius:12px;flex:none;
+    background:linear-gradient(135deg,var(--accent),#8a5bff);
+    display:grid;place-items:center;font-weight:700;font-size:20px;color:#fff;
+  }
+  h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .credit{margin-left:auto;font-size:13px;color:var(--text-dim);white-space:nowrap}
+  .credit a{color:var(--accent-hi);text-decoration:none}
+  .credit a:hover{text-decoration:underline}
+  .tagline{color:var(--text-dim);font-size:14.5px;margin:2px 0 30px 58px}
+
+  .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
+  @media(max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+  .panel{
+    background:var(--bg-elev);border:1px solid var(--border);
+    border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);
+  }
+  .panel + .panel{margin-top:20px}
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--text-faint);margin-bottom:14px;font-weight:600}
+
+  /* Dropzone */
+  #drop{
+    display:block;width:100%;color:inherit;font:inherit;
+    border:2px dashed var(--border-hi);border-radius:var(--radius);
+    padding:34px 20px;text-align:center;cursor:pointer;
+    transition:border-color .15s, background-color .15s;
+    background:var(--bg-elev-2);
+    touch-action:manipulation;
+  }
+  #drop:hover,#drop:focus-visible,#drop.drag{border-color:var(--accent);outline:none}
+  #drop .ic{font-size:34px;margin-bottom:8px}
+  #drop .big{font-weight:600;font-size:15px}
+  #drop .small{color:var(--text-dim);font-size:13px;margin-top:4px}
+  #fileInput{display:none}
+
+  label.fld{display:block;font-size:12.5px;color:var(--text-dim);margin:16px 0 6px;font-weight:500}
+  select{
+    width:100%;background:var(--bg-elev-2);color:var(--text);
+    border:1px solid var(--border-hi);border-radius:var(--radius-sm);
+    padding:11px 12px;font-family:inherit;font-size:16px;outline:none;transition:border-color .15s;
+  }
+  select:focus{border-color:var(--accent)}
+
+  .btn{
+    width:100%;border:none;border-radius:var(--radius-sm);cursor:pointer;
+    padding:13px 16px;font-family:inherit;font-weight:600;font-size:14.5px;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    transition:filter .15s, opacity .15s;margin-top:18px;touch-action:manipulation;
+  }
+  .btn.primary{background:linear-gradient(135deg,var(--accent),#7b6bff);color:#fff}
+  .btn.primary:hover{filter:brightness(1.08)}
+  .btn.ghost{background:var(--bg-elev-2);color:var(--text);border:1px solid var(--border-hi)}
+  .btn.ghost:hover{border-color:var(--accent)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+
+  /* progress */
+  #progWrap{margin-top:16px;display:none}
+  #progWrap.show{display:block}
+  .bar{height:8px;background:var(--bg-elev-2);border-radius:99px;overflow:hidden;border:1px solid var(--border)}
+  .bar > i{display:block;height:100%;width:100%;transform-origin:0 50%;transform:scaleX(0);background:linear-gradient(90deg,var(--accent),var(--success));transition:transform .2s}
+  #progText{font-size:12.5px;color:var(--text-dim);margin-top:7px;text-align:center}
+  #progText.warn{color:var(--warn)}
+
+  .hint{font-size:12px;color:var(--text-faint);margin-top:14px;line-height:1.55}
+
+  /* gallery */
+  .gallery-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .gallery-head h2{margin:0}
+  .count{font-size:12.5px;color:var(--text-dim)}
+  .empty{
+    border:1px dashed var(--border);border-radius:var(--radius);
+    padding:70px 20px;text-align:center;color:var(--text-faint);
+  }
+  .empty .ic{font-size:40px;opacity:.6;margin-bottom:10px}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+  .card{
+    background:var(--bg-elev-2);border:1px solid var(--border);border-radius:12px;
+    overflow:hidden;position:relative;
+    content-visibility:auto;contain-intrinsic-size:auto 260px;
+  }
+  .card .thumb{position:relative;background:#000;aspect-ratio:4/3;display:grid;place-items:center;overflow:hidden}
+  .card canvas{max-width:100%;max-height:100%;display:block}
+  .card .meta{padding:10px 12px}
+  .card .name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .sub{font-size:11.5px;color:var(--text-dim);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tag{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:600;letter-spacing:.02em}
+  .tag.exif{background:rgba(63,209,139,.14);color:var(--success)}
+  .tag.fallback{background:rgba(245,181,68,.16);color:var(--warn)}
+  .tag.err{background:rgba(255,107,107,.16);color:var(--danger)}
+  .card .acts{position:absolute;top:8px;right:8px;display:flex;gap:6px;opacity:0;transition:opacity .15s}
+  .card:hover .acts,.card:focus-within .acts{opacity:1}
+  .card .acts button{
+    width:30px;height:30px;border-radius:8px;
+    background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);color:#fff;
+    cursor:pointer;display:grid;place-items:center;font-size:13px;line-height:1;touch-action:manipulation;
+  }
+  .card .acts button:hover{background:rgba(0,0,0,.8)}
+  .card .spin{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.3)}
+  .spinner{width:22px;height:22px;border:2.5px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* Touch screens have no hover, so keep the card buttons visible. */
+  @media (hover:none){
+    .card .acts{opacity:1}
+    .card .acts button{width:36px;height:36px;font-size:15px}
+  }
+
+  @media (max-width:560px){
+    .wrap{padding:20px 14px 56px}
+    header{flex-wrap:wrap;row-gap:4px}
+    h1{font-size:22px}
+    .tagline{margin:4px 0 20px;font-size:14px}
+    .panel{padding:16px;box-shadow:none}
+    .panel + .panel{margin-top:14px}
+    .grid{gap:14px}
+    #drop{padding:24px 16px}
+    .cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+    .card .meta{padding:8px 9px}
+    .empty{padding:40px 16px}
+  }
+
+  @media (prefers-reduced-motion: reduce){.spinner{animation:none}*{transition:none!important}}
+</style>
 </head>
-
 <body>
-  <main class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark">DB</div>
-        <div class="brand-copy">
-          <h1>Photo Date Burn</h1>
-          <p>Batch-burn original capture dates onto full-resolution photographs.</p>
-          <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a></p>
-        </div>
+<div class="wrap">
+  <header>
+    <div class="logo" aria-hidden="true">◷</div>
+    <h1>DateStamp</h1>
+    <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a></p>
+  </header>
+  <p class="tagline">Burn the original “Date Taken” onto your photos at full resolution, in your browser.</p>
+
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <h2>1 · Add Photos</h2>
+        <button type="button" id="drop">
+          <span class="ic" aria-hidden="true">📷</span>
+          <span class="big" style="display:block">Drop photos here</span>
+          <span class="small" style="display:block">or tap to browse · JPG · PNG</span>
+        </button>
+        <input type="file" id="fileInput" accept="image/jpeg,image/png" multiple>
+        <p class="hint">Files never leave your device. EXIF “DateTimeOriginal” is used when present; otherwise the file’s last-modified date is used and flagged.</p>
       </div>
 
-      <div class="privacy-pill">
-        <span class="privacy-dot"></span>
-        Photos stay in your browser
+      <div class="panel">
+        <h2>2 · Stamp Style</h2>
+        <label class="fld" for="preset">Preset</label>
+        <select id="preset">
+          <option value="retro">Retro Digital Camera</option>
+          <option value="film">Classic Film</option>
+          <option value="modern">Modern Minimalist</option>
+          <option value="detailed">Detailed (Date &amp; Time)</option>
+        </select>
+
+        <label class="fld" for="size">Stamp size</label>
+        <select id="size">
+          <option value="0.030">Small</option>
+          <option value="0.040" selected>Medium</option>
+          <option value="0.055">Large</option>
+        </select>
       </div>
-    </header>
 
-    <div class="workspace">
-      <aside class="sidebar">
-        <section class="panel controls-panel">
-          <div class="panel-body">
-            <h2 class="panel-title">Timestamp style</h2>
-            <p class="panel-description">Choose from film date-backs, compact cameras, camcorders, VHS, and modern presets.</p>
-
-            <div class="field">
-              <label for="presetSelect">Preset</label>
-              <select id="presetSelect">
-                <optgroup label="Retro film and compact cameras">
-                  <option value="retro-orange">Late 90s Digital Orange</option>
-                  <option value="retro-red">90s Date-Back Red</option>
-                  <option value="retro-amber">Film Date-Back Amber</option>
-                  <option value="retro-yellow">Disposable Camera Yellow</option>
-                  <option value="retro-compact">Compact Camera Red-Orange</option>
-                  <option value="retro-dateback">35mm Date-Back Wide Spacing</option>
-                  <option value="retro-yy-mm-dd">Early Digital YY-MM-DD</option>
-                  <option value="retro-month-name">Compact Camera Month Name</option>
-                  <option value="retro-polaroid">Instant Print Warm White</option>
-                </optgroup>
-
-                <optgroup label="Retro video and camcorder">
-                  <option value="retro-green">Hi8 Camcorder Green</option>
-                  <option value="retro-blue">Early Digital Camera Blue</option>
-                  <option value="retro-camcorder">Camcorder OSD Date + Time</option>
-                  <option value="retro-minidv">MiniDV White OSD</option>
-                  <option value="retro-vhs">VHS Top-Left Timestamp</option>
-                  <option value="retro-lcd">LCD Camera Readout</option>
-                </optgroup>
-
-                <optgroup label="Clean styles">
-                  <option value="classic">Classic Film</option>
-                  <option value="modern">Modern Minimalist</option>
-                  <option value="detailed">Detailed Date + Time</option>
-                </optgroup>
-              </select>
-            </div>
-
-            <div class="preset-example">
-              <span id="sampleDate" class="sample-date retro-orange">2026 08 31</span>
-            </div>
-
-            <div id="presetInfo" class="preset-info"></div>
-
-            <div class="resolution-note">
-              <div class="resolution-icon">1:1</div>
-              <div>
-                <strong>Strict original resolution</strong>
-                <span>Export canvases match each image's natural width and height. JPEG export uses quality 1.0.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="panel export-panel">
-          <div class="panel-body">
-            <div>
-              <h2 class="panel-title">Batch export</h2>
-              <p class="panel-description">Finished JPEGs are packaged into one ZIP.</p>
-            </div>
-
-            <div class="export-summary">
-              <span>Photos</span>
-              <strong id="exportCount">0</strong>
-            </div>
-
-            <div class="export-summary">
-              <span>Using fallback date</span>
-              <strong id="fallbackCount">0</strong>
-            </div>
-
-            <div id="progressWrap" class="progress-wrap">
-              <div class="progress-meta">
-                <span id="progressLabel">Processing</span>
-                <span id="progressPercent">0%</span>
-              </div>
-              <div class="progress-track">
-                <div id="progressBar" class="progress-bar"></div>
-              </div>
-            </div>
-
-            <button id="downloadAllButton" class="button button-primary" type="button" disabled>
-              <span id="downloadAllText">Download All</span>
-            </button>
-          </div>
-        </section>
-      </aside>
-
-      <section class="main">
-        <input id="fileInput" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" multiple>
-
-        <div id="dropZone" class="drop-zone" role="button" tabindex="0">
-          <div class="drop-inner">
-            <div class="upload-icon">＋</div>
-            <h2>Drop your photos here</h2>
-            <p>or <span class="browse-text">browse your device</span> to add a batch</p>
-            <div class="formats">JPG, JPEG, PNG · Multiple files supported</div>
-          </div>
+      <div class="panel">
+        <h2>3 · Export</h2>
+        <p class="hint" style="margin-top:0">Exports at each image’s native resolution as maximum-quality JPEG.</p>
+        <button class="btn primary" id="zipBtn" disabled>⬇ Download All (.zip)</button>
+        <button class="btn ghost" id="clearBtn" disabled>Clear</button>
+        <div id="progWrap" aria-live="polite">
+          <div class="bar"><i id="progBar"></i></div>
+          <div id="progText">Processing…</div>
         </div>
-
-        <div id="statusStrip" class="status-strip" role="status" aria-live="polite">
-          <span class="status-icon">i</span>
-          <span id="statusText"></span>
-        </div>
-
-        <div id="gallerySection" class="hidden">
-          <div class="gallery-header">
-            <div class="gallery-heading">
-              <h2>Preview</h2>
-              <span id="imageCount" class="image-count">0 photos</span>
-            </div>
-
-            <div class="gallery-actions">
-              <button id="addMoreButton" class="button button-ghost" type="button">Add more</button>
-              <button id="clearButton" class="button button-ghost" type="button">Clear all</button>
-            </div>
-          </div>
-
-          <div id="gallery" class="gallery"></div>
-        </div>
-
-        <div id="emptyState" class="empty-state">
-          Your photo previews will appear here after you add files.
-        </div>
-      </section>
+      </div>
     </div>
-  </main>
 
-  <script>
-    "use strict";
+    <div class="panel">
+      <div class="gallery-head">
+        <h2>Preview</h2>
+        <div class="count" id="count">No photos yet</div>
+      </div>
+      <div id="empty" class="empty">
+        <div class="ic" aria-hidden="true">🖼️</div>
+        <div>Uploaded photos will appear here with the live stamp preview.</div>
+      </div>
+      <div id="cards" class="cards"></div>
+    </div>
+  </div>
+</div>
 
-    (() => {
-      const ACCEPTED_MIME_TYPES = new Set(["image/jpeg", "image/png"]);
-      const ACCEPTED_EXTENSIONS = new Set(["jpg", "jpeg", "png"]);
+<script>
+(() => {
+  "use strict";
 
-      const state = {
-        photos: [],
-        preset: "retro-orange",
-        busy: false,
-        nextId: 1
-      };
+  // ---------- State ----------
+  // Each item keeps only a small decoded preview. The full-size image is decoded
+  // again at export time, one photo at a time, so memory stays low on phones.
+  const items = []; // {id, file, name, base:canvas|null, preview:canvas|null, date, source, dirty, cardEl}
+  let uid = 0;
 
-      const elements = {
-        fileInput: document.getElementById("fileInput"),
-        dropZone: document.getElementById("dropZone"),
-        presetSelect: document.getElementById("presetSelect"),
-        sampleDate: document.getElementById("sampleDate"),
-        presetInfo: document.getElementById("presetInfo"),
-        gallery: document.getElementById("gallery"),
-        gallerySection: document.getElementById("gallerySection"),
-        emptyState: document.getElementById("emptyState"),
-        imageCount: document.getElementById("imageCount"),
-        exportCount: document.getElementById("exportCount"),
-        fallbackCount: document.getElementById("fallbackCount"),
-        downloadAllButton: document.getElementById("downloadAllButton"),
-        downloadAllText: document.getElementById("downloadAllText"),
-        addMoreButton: document.getElementById("addMoreButton"),
-        clearButton: document.getElementById("clearButton"),
-        statusStrip: document.getElementById("statusStrip"),
-        statusText: document.getElementById("statusText"),
-        progressWrap: document.getElementById("progressWrap"),
-        progressLabel: document.getElementById("progressLabel"),
-        progressPercent: document.getElementById("progressPercent"),
-        progressBar: document.getElementById("progressBar")
-      };
+  const $ = s => document.querySelector(s);
+  const drop = $('#drop'), fileInput = $('#fileInput');
+  const presetSel = $('#preset'), sizeSel = $('#size');
+  const cardsEl = $('#cards'), emptyEl = $('#empty'), countEl = $('#count');
+  const zipBtn = $('#zipBtn'), clearBtn = $('#clearBtn');
+  const progWrap = $('#progWrap'), progBar = $('#progBar'), progText = $('#progText');
 
-      const PRESETS = {
-        "retro-orange": {
-          sample: "2026 08 31",
-          title: "Late 90s Digital Orange",
-          description: "Warm orange numeric imprint inspired by late-1990s compact cameras and early consumer digital cameras.",
-          format: "spaceDate",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ff8b00",
-          fontRatio: 0.028,
-          minimumFont: 24,
-          maximumFont: 180,
-          shadowColor: "rgba(0,0,0,.88)",
-          shadowBlurRatio: 0.03,
-          shadowOffsetRatio: 0.045,
-          letterSpacingRatio: 0.08
-        },
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const PREVIEW_MAX = Math.round(Math.max(520, 340 * DPR));
+  const DECODE_CONCURRENCY = 2;
 
-        "retro-red": {
-          sample: "31 08 '26",
-          title: "90s Date-Back Red",
-          description: "Red date-back style with a short year and tighter late-film-era spacing.",
-          format: "dateBack",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ff3d32",
-          fontRatio: 0.028,
-          minimumFont: 24,
-          maximumFont: 180,
-          shadowColor: "rgba(0,0,0,.88)",
-          shadowBlurRatio: 0.024,
-          shadowOffsetRatio: 0.045,
-          letterSpacingRatio: 0.09,
-          glowColor: "rgba(255,61,50,.34)"
-        },
+  // Largest canvas the browser will reliably draw. iOS and iPadOS Safari cap a
+  // canvas at 16,777,216 pixels; desktop browsers allow far more.
+  const IS_IOS = /iP(hone|ad|od)/.test(navigator.userAgent) ||
+                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const MAX_AREA = IS_IOS ? 16777216 : 268435456;
+  const MAX_SIDE = IS_IOS ? 16384 : 32767;
 
-        "retro-amber": {
-          sample: "31-08-26",
-          title: "Film Date-Back Amber",
-          description: "Amber date imprint with the compact DD-MM-YY format often associated with consumer film cameras.",
-          format: "dashShort",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ffad34",
-          fontRatio: 0.028,
-          minimumFont: 24,
-          maximumFont: 180,
-          shadowColor: "rgba(0,0,0,.9)",
-          shadowBlurRatio: 0.02,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.065
-        },
+  const nextFrame = () => new Promise(r => requestAnimationFrame(() => r()));
 
-        "retro-yellow": {
-          sample: "08/31/26",
-          title: "Disposable Camera Yellow",
-          description: "Bright yellow short-date stamp inspired by disposable and low-cost point-and-shoot cameras.",
-          format: "slashShort",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ffda42",
-          fontRatio: 0.028,
-          minimumFont: 24,
-          maximumFont: 180,
-          shadowColor: "rgba(0,0,0,.88)",
-          shadowBlurRatio: 0.025,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.07
-        },
+  function saveBlob(filename, blob) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+  }
 
-        "retro-compact": {
-          sample: "2026.08.31",
-          title: "Compact Camera Red-Orange",
-          description: "Period-separated red-orange date inspired by compact cameras from the late film and early digital transition.",
-          format: "dots",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ff674c",
-          fontRatio: 0.027,
-          minimumFont: 24,
-          maximumFont: 178,
-          shadowColor: "rgba(0,0,0,.9)",
-          shadowBlurRatio: 0.018,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.025
-        },
+  function stampedName(name, used) {
+    const base = name.replace(/\.[^.]+$/, '');
+    let out = `${base}_stamped.jpg`, n = 1;
+    if (used) { while (used.has(out)) out = `${base}_stamped_${n++}.jpg`; used.add(out); }
+    return out;
+  }
 
-        "retro-dateback": {
-          sample: "'26  08  31",
-          title: "35mm Date-Back Wide Spacing",
-          description: "Wide-spaced red date-back imprint that resembles simple 35mm camera quartz-date backs.",
-          format: "wideDateBack",
-          position: "bottom-left",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ff6049",
-          fontRatio: 0.027,
-          minimumFont: 24,
-          maximumFont: 175,
-          shadowColor: "rgba(0,0,0,.92)",
-          shadowBlurRatio: 0.018,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.13
-        },
+  // ---------- Date helpers ----------
+  const pad = n => String(n).padStart(2, '0');
+  function fmt(d, style) {
+    const Y = d.getFullYear(), M = pad(d.getMonth()+1), D = pad(d.getDate());
+    const h = pad(d.getHours()), m = pad(d.getMinutes());
+    switch (style) {
+      case 'retro':    return `${Y} ${M} ${D}`;
+      case 'detailed': return `${Y}-${M}-${D} ${h}:${m}`;
+      default:         return `${Y}-${M}-${D}`;
+    }
+  }
 
-        "retro-yy-mm-dd": {
-          sample: "26-08-31",
-          title: "Early Digital YY-MM-DD",
-          description: "Short-year numeric stamp inspired by compact digital camera date overlays from the early 2000s.",
-          format: "yyMMdd",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ff8735",
-          fontRatio: 0.027,
-          minimumFont: 24,
-          maximumFont: 175,
-          shadowColor: "rgba(0,0,0,.9)",
-          shadowBlurRatio: 0.02,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.05
-        },
+  // ---------- EXIF date reader ----------
+  // Reads DateTimeOriginal, then CreateDate, then ModifyDate from a JPEG APP1
+  // segment, a PNG eXIf chunk or a bare TIFF header. Returns a local Date or null.
+  function tiffDate(u, t) {
+    if (t < 0 || t + 8 > u.length) return null;
+    const le = u[t] === 0x49 && u[t+1] === 0x49;
+    if (!le && !(u[t] === 0x4D && u[t+1] === 0x4D)) return null;
+    const r16 = o => le ? u[o] | (u[o+1] << 8) : (u[o] << 8) | u[o+1];
+    const r32 = o => (le ? (u[o] | (u[o+1] << 8) | (u[o+2] << 16) | (u[o+3] << 24))
+                         : ((u[o] << 24) | (u[o+1] << 16) | (u[o+2] << 8) | u[o+3])) >>> 0;
+    const find = (off, tag) => {
+      if (!off) return null;
+      const p = t + off; if (p + 2 > u.length) return null;
+      const n = r16(p);
+      for (let k = 0; k < n; k++) {
+        const e = p + 2 + k * 12;
+        if (e + 12 > u.length) return null;
+        if (r16(e) === tag) return e;
+      }
+      return null;
+    };
+    const str = e => {
+      if (!e) return null;
+      const o = t + r32(e + 8);
+      if (o + 19 > u.length) return null;
+      return String.fromCharCode.apply(null, u.subarray(o, o + 19));
+    };
+    const ifd0 = r32(t + 4);
+    const ex = find(ifd0, 0x8769), exOff = ex ? r32(ex + 8) : 0;
+    const raw = str(find(exOff, 0x9003)) || str(find(exOff, 0x9004)) || str(find(ifd0, 0x0132));
+    const m = raw && raw.match(/^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2}):(\d{2})/);
+    if (!m || m[1] === '0000') return null;
+    const d = new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    return isNaN(+d) ? null : d;
+  }
 
-        "retro-month-name": {
-          sample: "31 AUG '26",
-          title: "Compact Camera Month Name",
-          description: "Red text with an abbreviated month for a late-1990s compact-camera feel.",
-          format: "dayMonthShortYear",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ff533d",
-          fontRatio: 0.027,
-          minimumFont: 23,
-          maximumFont: 175,
-          shadowColor: "rgba(0,0,0,.92)",
-          shadowBlurRatio: 0.02,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.055
-        },
-
-        "retro-polaroid": {
-          sample: "AUG 31 2026",
-          title: "Instant Print Warm White",
-          description: "Warm white date text designed to feel softer and less electronic on instant-print style images.",
-          format: "monthText",
-          position: "bottom-left",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "700",
-          fillStyle: "#fff0b3",
-          fontRatio: 0.025,
-          minimumFont: 22,
-          maximumFont: 165,
-          shadowColor: "rgba(0,0,0,.85)",
-          shadowBlurRatio: 0.035,
-          shadowOffsetRatio: 0.035,
-          letterSpacingRatio: 0.02
-        },
-
-        "retro-green": {
-          sample: "AUG 31 2026",
-          title: "Hi8 Camcorder Green",
-          description: "Green on-screen display inspired by Hi8 and analog camcorder date overlays.",
-          format: "monthText",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#79f06e",
-          fontRatio: 0.026,
-          minimumFont: 23,
-          maximumFont: 170,
-          shadowColor: "rgba(0,0,0,.9)",
-          shadowBlurRatio: 0.03,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.05,
-          glowColor: "rgba(121,240,110,.32)"
-        },
-
-        "retro-blue": {
-          sample: "2026/08/31",
-          title: "Early Digital Camera Blue",
-          description: "Cool blue full-year stamp inspired by consumer digital camera overlays from the early 2000s.",
-          format: "slashFull",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#64c5ff",
-          fontRatio: 0.027,
-          minimumFont: 24,
-          maximumFont: 175,
-          shadowColor: "rgba(0,0,0,.9)",
-          shadowBlurRatio: 0.025,
-          shadowOffsetRatio: 0.04,
-          letterSpacingRatio: 0.055,
-          glowColor: "rgba(100,197,255,.28)"
-        },
-
-        "retro-camcorder": {
-          sample: "31.AUG.2026  23:35",
-          title: "Camcorder OSD Date + Time",
-          description: "Date and time inside a dark rectangular on-screen display, designed to resemble consumer camcorder overlays.",
-          format: "camcorder",
-          position: "bottom-left",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#f5f5f5",
-          fontRatio: 0.023,
-          minimumFont: 22,
-          maximumFont: 155,
-          shadowColor: "transparent",
-          shadowBlurRatio: 0,
-          shadowOffsetRatio: 0,
-          letterSpacingRatio: 0.03,
-          background: "rgba(0,0,0,.72)",
-          boxRadiusRatio: 0.04
-        },
-
-        "retro-minidv": {
-          sample: "31 AUG 2026 23:35",
-          title: "MiniDV White OSD",
-          description: "White monospaced MiniDV-style date and time with a hard black offset shadow.",
-          format: "miniDV",
-          position: "bottom-left",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ffffff",
-          fontRatio: 0.024,
-          minimumFont: 22,
-          maximumFont: 160,
-          shadowColor: "#000000",
-          shadowBlurRatio: 0,
-          shadowOffsetRatio: 0.055,
-          letterSpacingRatio: 0.045
-        },
-
-        "retro-vhs": {
-          sample: "AUG.31.2026  23:35",
-          title: "VHS Top-Left Timestamp",
-          description: "Top-left white timestamp inspired by home-video VHS and analog tape date generators.",
-          format: "vhs",
-          position: "top-left",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#ffffff",
-          fontRatio: 0.024,
-          minimumFont: 22,
-          maximumFont: 160,
-          shadowColor: "#000000",
-          shadowBlurRatio: 0,
-          shadowOffsetRatio: 0.055,
-          letterSpacingRatio: 0.045
-        },
-
-        "retro-lcd": {
-          sample: "2026-08-31 23:35",
-          title: "LCD Camera Readout",
-          description: "Dark characters on a muted green LCD panel, styled after compact-camera status displays.",
-          format: "detailed",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "900",
-          fillStyle: "#151812",
-          fontRatio: 0.022,
-          minimumFont: 21,
-          maximumFont: 150,
-          shadowColor: "transparent",
-          shadowBlurRatio: 0,
-          shadowOffsetRatio: 0,
-          letterSpacingRatio: 0.025,
-          background: "rgba(194,211,145,.82)",
-          borderColor: "rgba(20,24,14,.6)",
-          boxRadiusRatio: 0.03
-        },
-
-        classic: {
-          sample: "August 31, 2026",
-          title: "Classic Film",
-          description: "White serif date with a subtle black shadow for a restrained print-oriented look.",
-          format: "classic",
-          position: "bottom-right",
-          fontFamily: 'Georgia, "Times New Roman", serif',
-          fontWeight: "700",
-          fillStyle: "#ffffff",
-          fontRatio: 0.026,
-          minimumFont: 24,
-          maximumFont: 170,
-          shadowColor: "rgba(0,0,0,.92)",
-          shadowBlurRatio: 0.075,
-          shadowOffsetRatio: 0.065,
-          letterSpacingRatio: 0
-        },
-
-        modern: {
-          sample: "2026-08-31",
-          title: "Modern Minimalist",
-          description: "Clean ISO date inside a semi-transparent black pill at the bottom left.",
-          format: "modern",
-          position: "bottom-left",
-          fontFamily: "Arial, Helvetica, sans-serif",
-          fontWeight: "650",
-          fillStyle: "#ffffff",
-          fontRatio: 0.024,
-          minimumFont: 22,
-          maximumFont: 160,
-          shadowColor: "transparent",
-          shadowBlurRatio: 0,
-          shadowOffsetRatio: 0,
-          letterSpacingRatio: 0,
-          background: "rgba(0,0,0,.62)",
-          pill: true
-        },
-
-        detailed: {
-          sample: "2026-08-31 23:35",
-          title: "Detailed Date + Time",
-          description: "Full ISO date and time for archival prints, contact sheets, documentation, and reference images.",
-          format: "detailed",
-          position: "bottom-right",
-          fontFamily: '"Courier New", Courier, monospace',
-          fontWeight: "700",
-          fillStyle: "#ffffff",
-          fontRatio: 0.023,
-          minimumFont: 22,
-          maximumFont: 155,
-          shadowColor: "rgba(0,0,0,.92)",
-          shadowBlurRatio: 0.07,
-          shadowOffsetRatio: 0.055,
-          letterSpacingRatio: 0
+  function exifDate(u) {
+    if (u[0] === 0xFF && u[1] === 0xD8) {               // JPEG
+      let i = 2;
+      while (i + 10 < u.length && u[i] === 0xFF) {
+        const mk = u[i+1];
+        if (mk === 0xFF) { i++; continue; }             // fill byte
+        const len = (u[i+2] << 8) | u[i+3];
+        if (mk === 0xE1 && u[i+4] === 0x45 && u[i+5] === 0x78 && u[i+6] === 0x69 && u[i+7] === 0x66 && u[i+8] === 0 && u[i+9] === 0) {
+          const d = tiffDate(u, i + 10);
+          if (d) return d;
         }
-      };
-
-      function pad(value) {
-        return String(value).padStart(2, "0");
+        if (mk === 0xDA || len < 2) break;              // start of scan
+        i += 2 + len;
       }
-
-      function clamp(value, min, max) {
-        return Math.max(min, Math.min(max, value));
-      }
-
-      function monthAbbr(date) {
-        return ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"][date.getMonth()];
-      }
-
-      function formatDate(date, format) {
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
-        const hours = date.getHours();
-        const minutes = date.getMinutes();
-        const shortYear = String(year).slice(-2);
-        const mon = monthAbbr(date);
-
-        switch (format) {
-          case "spaceDate":
-            return `${year} ${pad(month)} ${pad(day)}`;
-          case "dateBack":
-            return `${pad(day)} ${pad(month)} '${shortYear}`;
-          case "dashShort":
-            return `${pad(day)}-${pad(month)}-${shortYear}`;
-          case "slashShort":
-            return `${pad(month)}/${pad(day)}/${shortYear}`;
-          case "dots":
-            return `${year}.${pad(month)}.${pad(day)}`;
-          case "wideDateBack":
-            return `'${shortYear}  ${pad(month)}  ${pad(day)}`;
-          case "yyMMdd":
-            return `${shortYear}-${pad(month)}-${pad(day)}`;
-          case "dayMonthShortYear":
-            return `${pad(day)} ${mon} '${shortYear}`;
-          case "monthText":
-            return `${mon} ${pad(day)} ${year}`;
-          case "slashFull":
-            return `${year}/${pad(month)}/${pad(day)}`;
-          case "camcorder":
-            return `${pad(day)}.${mon}.${year}  ${pad(hours)}:${pad(minutes)}`;
-          case "miniDV":
-            return `${pad(day)} ${mon} ${year} ${pad(hours)}:${pad(minutes)}`;
-          case "vhs":
-            return `${mon}.${pad(day)}.${year}  ${pad(hours)}:${pad(minutes)}`;
-          case "classic":
-            return new Intl.DateTimeFormat("en", {
-              year: "numeric",
-              month: "long",
-              day: "numeric"
-            }).format(date);
-          case "detailed":
-            return `${year}-${pad(month)}-${pad(day)} ${pad(hours)}:${pad(minutes)}`;
-          default:
-            return `${year}-${pad(month)}-${pad(day)}`;
+      return null;
+    }
+    if (u[0] === 0x89 && u[1] === 0x50 && u[2] === 0x4E && u[3] === 0x47) {   // PNG
+      let i = 8;
+      while (i + 8 <= u.length) {
+        const len = ((u[i] << 24) | (u[i+1] << 16) | (u[i+2] << 8) | u[i+3]) >>> 0;
+        const type = String.fromCharCode(u[i+4], u[i+5], u[i+6], u[i+7]);
+        if (type === 'eXIf') {
+          let t = i + 8;
+          if (u[t] === 0x45 && u[t+1] === 0x78 && u[t+2] === 0x69 && u[t+3] === 0x66) t += 6;
+          return tiffDate(u.subarray(0, Math.min(u.length, i + 8 + len)), t);
         }
+        if (type === 'IDAT' || type === 'IEND') break;
+        i += 12 + len;
       }
+      return null;
+    }
+    return tiffDate(u, 0);
+  }
 
-      function formatReadableDate(date) {
-        return new Intl.DateTimeFormat(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        }).format(date);
+  async function readDate(file) {
+    try {
+      const head = new Uint8Array(await file.slice(0, 262144).arrayBuffer());
+      return exifDate(head);
+    } catch (_) { return null; }
+  }
+
+  // ---------- Image decoding ----------
+  async function decodeImage(file) {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = url;
+      if (img.decode) await img.decode();
+      else await new Promise((res, rej) => { img.onload = res; img.onerror = rej; });
+      return img;
+    } finally {
+      // Revoke after a frame so drawImage has finished reading the decoded image.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  }
+
+  function releaseImage(img) { if (img) { img.src = ''; } }
+  function releaseCanvas(c) { if (c) { c.width = 0; c.height = 0; } }
+
+  // ---------- Stamp renderer ----------
+  function drawStamp(ctx, w, h, date, style, sizeFrac) {
+    const base = Math.min(w, h);
+    const fs = Math.max(11, Math.round(base * sizeFrac));
+    const text = fmt(date, style);
+    ctx.textBaseline = 'alphabetic';
+    ctx.save();
+
+    if (style === 'retro') {
+      ctx.font = `${fs}px 'Share Tech Mono','Courier New',monospace`;
+      ctx.textAlign = 'right';
+      const x = w - fs*0.9, y = h - fs*0.9;
+      ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = fs*0.12;
+      ctx.shadowOffsetX = 0; ctx.shadowOffsetY = fs*0.06;
+      ctx.fillStyle = '#ff7a1a';
+      ctx.fillText(text, x, y);
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.shadowColor = 'transparent';
+      ctx.globalAlpha = 0.55; ctx.fillStyle = '#ffd7a0';
+      ctx.fillText(text, x, y);
+    }
+    else if (style === 'film') {
+      ctx.font = `600 ${fs}px 'Playfair Display',Georgia,'Times New Roman',serif`;
+      ctx.textAlign = 'right';
+      const x = w - fs*1.0, y = h - fs*1.0;
+      ctx.shadowColor = 'rgba(0,0,0,.75)'; ctx.shadowBlur = fs*0.18;
+      ctx.shadowOffsetX = fs*0.03; ctx.shadowOffsetY = fs*0.05;
+      ctx.fillStyle = '#f7f4ee';
+      ctx.fillText(text, x, y);
+    }
+    else if (style === 'modern') {
+      ctx.font = `600 ${fs}px 'Inter',system-ui,sans-serif`;
+      const padX = fs*0.7, padY = fs*0.42, gap = fs*0.9;
+      ctx.textAlign = 'left';
+      const tw = ctx.measureText(text).width;
+      const pillW = tw + padX*2, pillH = fs + padY*2;
+      const px = gap, py = h - gap - pillH;
+      ctx.fillStyle = 'rgba(0,0,0,.55)';
+      roundRect(ctx, px, py, pillW, pillH, pillH/2); ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, px + padX, py + pillH/2 + fs*0.04);
+    }
+    else if (style === 'detailed') {
+      ctx.font = `${fs}px 'Share Tech Mono','Courier New',monospace`;
+      ctx.textAlign = 'right';
+      const x = w - fs*0.9, y = h - fs*0.9;
+      const tw = ctx.measureText(text).width;
+      const padX = fs*0.5, padY = fs*0.35;
+      ctx.fillStyle = 'rgba(0,0,0,.4)';
+      roundRect(ctx, x - tw - padX, y - fs - padY*0.4, tw + padX*2, fs + padY*1.4, fs*0.18);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(text, x, y);
+    }
+    ctx.restore();
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    r = Math.min(r, w/2, h/2);
+    ctx.beginPath();
+    ctx.moveTo(x+r, y);
+    ctx.arcTo(x+w, y, x+w, y+h, r);
+    ctx.arcTo(x+w, y+h, x, y+h, r);
+    ctx.arcTo(x, y+h, x, y, r);
+    ctx.arcTo(x, y, x+w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- Preview rendering ----------
+  // The stamp is sized from the short side, so drawing it onto the scaled
+  // preview gives the same proportions as the full-size export.
+  function drawPreview(it) {
+    if (!it.base || !it.preview) return;
+    const c = it.preview, w = it.base.width, h = it.base.height;
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const ctx = c.getContext('2d');
+    ctx.drawImage(it.base, 0, 0);
+    if (it.date) drawStamp(ctx, w, h, it.date, presetSel.value, parseFloat(sizeSel.value));
+    it.dirty = false;
+  }
+
+  // Only previews on screen are redrawn straight away; the rest are redrawn
+  // when they scroll into view.
+  const visible = new Set();
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
+    for (const e of entries) {
+      const it = items.find(x => x.cardEl === e.target);
+      if (!it) continue;
+      if (e.isIntersecting) { visible.add(it); if (it.dirty) drawPreview(it); }
+      else visible.delete(it);
+    }
+  }, { rootMargin: '300px 0px' }) : null;
+
+  let refreshQueued = false;
+  function refreshPreviews() {
+    for (const it of items) it.dirty = true;
+    if (refreshQueued) return;
+    refreshQueued = true;
+    requestAnimationFrame(() => {
+      refreshQueued = false;
+      for (const it of items) {
+        if (it.dirty && (!io || visible.has(it))) drawPreview(it);
       }
+    });
+  }
 
-      function formatBytes(bytes) {
-        if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
-        const units = ["B","KB","MB","GB"];
-        const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-        const value = bytes / Math.pow(1024, index);
-        return `${value.toFixed(index === 0 ? 0 : value >= 10 ? 1 : 2)} ${units[index]}`;
+  // ---------- Card DOM ----------
+  function buildCard(it) {
+    const card = document.createElement('div');
+    card.className = 'card'; card.dataset.id = it.id;
+    card.innerHTML = `
+      <div class="thumb"><div class="spin"><div class="spinner"></div></div></div>
+      <div class="acts">
+        <button class="dl" type="button" title="Download this photo" aria-label="Download this photo">⬇</button>
+        <button class="rm" type="button" title="Remove" aria-label="Remove">✕</button>
+      </div>
+      <div class="meta">
+        <div class="name"></div>
+        <div class="sub"></div>
+      </div>`;
+    card.querySelector('.name').textContent = it.name;
+    card.querySelector('.rm').addEventListener('click', () => removeItem(it.id));
+    card.querySelector('.dl').addEventListener('click', () => downloadOne(it));
+    it.cardEl = card;
+    return card;
+  }
+
+  function fillCard(it) {
+    const card = it.cardEl;
+    if (!card) return;
+    const thumb = card.querySelector('.thumb');
+    const sub = card.querySelector('.sub');
+    thumb.textContent = '';
+    if (it.source === 'error') {
+      thumb.innerHTML = '<div style="color:var(--danger);font-size:13px;padding:20px">Could not load</div>';
+      sub.innerHTML = '<span class="tag err">error</span>';
+      return;
+    }
+    it.preview = document.createElement('canvas');
+    thumb.appendChild(it.preview);
+    drawPreview(it);
+    const dstr = it.date ? fmt(it.date, 'detailed') : '—';
+    const tag = it.source === 'exif'
+      ? '<span class="tag exif">EXIF</span>'
+      : '<span class="tag fallback">file date</span>';
+    sub.innerHTML = `${tag}<span>${dstr}</span>`;
+  }
+
+  // ---------- Load queue ----------
+  const queue = [];
+  let active = 0;
+
+  function addFiles(fileList) {
+    const files = [...fileList].filter(f => /^image\/(jpeg|png)$/.test(f.type) || /\.(jpe?g|png)$/i.test(f.name));
+    if (!files.length) return;
+    const frag = document.createDocumentFragment();
+    for (const file of files) {
+      const it = { id: ++uid, file, name: file.name, base: null, preview: null, date: null, source: null, dirty: false };
+      items.push(it);
+      frag.appendChild(buildCard(it));
+      queue.push(it);
+    }
+    cardsEl.appendChild(frag);
+    if (io) for (const it of items.slice(-files.length)) io.observe(it.cardEl);
+    updateChrome();
+    pump();
+    loadZip();      // fetch the zip library in the background while photos load
+  }
+
+  function pump() {
+    while (active < DECODE_CONCURRENCY && queue.length) {
+      const it = queue.shift();
+      if (!items.includes(it)) continue;
+      active++;
+      loadOne(it).finally(() => { active--; pump(); });
+    }
+  }
+
+  async function loadOne(it) {
+    let img = null;
+    try {
+      let date = await readDate(it.file);
+      if (date) it.source = 'exif';
+      else { date = new Date(it.file.lastModified || Date.now()); it.source = 'fallback'; }
+      it.date = date;
+
+      img = await decodeImage(it.file);
+      it.w = img.naturalWidth; it.h = img.naturalHeight;
+      if (!it.w || !it.h) throw new Error('empty image');
+      const s = Math.min(1, PREVIEW_MAX / Math.max(it.w, it.h));
+      const base = document.createElement('canvas');
+      base.width = Math.max(1, Math.round(it.w * s));
+      base.height = Math.max(1, Math.round(it.h * s));
+      const bctx = base.getContext('2d');
+      bctx.imageSmoothingEnabled = true; bctx.imageSmoothingQuality = 'high';
+      bctx.drawImage(img, 0, 0, base.width, base.height);
+      if (!items.includes(it)) { releaseCanvas(base); return; }
+      it.base = base;
+      fillCard(it);
+    } catch (e) {
+      it.source = 'error';
+      fillCard(it);
+    } finally {
+      releaseImage(img);
+      updateChrome();
+    }
+  }
+
+  function dropItem(it) {
+    if (io && it.cardEl) io.unobserve(it.cardEl);
+    visible.delete(it);
+    it.cardEl?.remove();
+    releaseCanvas(it.base); releaseCanvas(it.preview);
+    it.base = it.preview = null;
+  }
+
+  function removeItem(id) {
+    const i = items.findIndex(x => x.id === id);
+    if (i < 0) return;
+    dropItem(items[i]);
+    items.splice(i, 1);
+    updateChrome();
+  }
+
+  let exporting = false;
+  function updateChrome() {
+    const ready = items.filter(i => i.base && i.source !== 'error').length;
+    emptyEl.style.display = items.length ? 'none' : '';
+    countEl.textContent = items.length ? `${items.length} photo${items.length>1?'s':''} · ${ready} ready` : 'No photos yet';
+    zipBtn.disabled = exporting || ready === 0;
+    clearBtn.disabled = exporting || items.length === 0;
+  }
+
+  // ---------- Full-resolution render ----------
+  function fitArea(w, h) {
+    let s = 1;
+    if (w * h > MAX_AREA) s = Math.sqrt(MAX_AREA / (w * h));
+    if (Math.max(w, h) * s > MAX_SIDE) s = MAX_SIDE / Math.max(w, h);
+    return s;
+  }
+
+  function toJpeg(canvas) {
+    return new Promise(res => canvas.toBlob(res, 'image/jpeg', 1.0));
+  }
+
+  // Decodes the original, stamps it and returns {blob, scaled}. If the browser
+  // cannot hold the full-size canvas, the image is scaled to the largest size it can.
+  async function fullJpeg(it, canvas) {
+    const img = await decodeImage(it.file);
+    try {
+      const w0 = img.naturalWidth, h0 = img.naturalHeight;
+      let s = fitArea(w0, h0);
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const w = Math.round(w0 * s), h = Math.round(h0 * s);
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, w, h);
+        drawStamp(ctx, w, h, it.date, presetSel.value, parseFloat(sizeSel.value));
+        const blob = await toJpeg(canvas);
+        releaseCanvas(canvas);
+        if (blob && blob.size) return { blob, scaled: s < 1 };
+        s *= 0.75;
       }
+      throw new Error('This browser could not render the photo.');
+    } finally {
+      releaseImage(img);
+    }
+  }
 
-      function isValidFile(file) {
-        const extension = file.name.split(".").pop()?.toLowerCase() || "";
-        return ACCEPTED_MIME_TYPES.has(file.type) || ACCEPTED_EXTENSIONS.has(extension);
-      }
+  // ---------- Fonts ----------
+  let fontsPromise = null;
+  function ensureFonts() {
+    if (fontsPromise) return fontsPromise;
+    const link = document.getElementById('stampFonts');
+    const sheetLoaded = new Promise(res => {
+      if (link.sheet && link.media === 'all') return res();
+      link.addEventListener('load', res, { once: true });
+      link.addEventListener('error', res, { once: true });
+    });
+    const load = sheetLoaded.then(() => Promise.all([
+      document.fonts.load("32px 'Share Tech Mono'", '0123'),
+      document.fonts.load("600 32px 'Playfair Display'", '0123'),
+      document.fonts.load("600 32px 'Inter'", '0123'),
+    ])).catch(() => {});
+    // Never hold the page up for fonts: fall back to system fonts after 4 seconds.
+    fontsPromise = Promise.race([load, new Promise(r => setTimeout(r, 4000))]);
+    return fontsPromise;
+  }
 
-      function fileIdentity(file) {
-        return `${file.name}::${file.size}::${file.lastModified}`;
-      }
+  // ---------- Zip library, loaded on demand ----------
+  let zipPromise = null;
+  function loadZip() {
+    if (window.JSZip) return Promise.resolve(window.JSZip);
+    if (zipPromise) return zipPromise;
+    zipPromise = new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'vendor/jszip.min.js';
+      s.async = true;
+      s.onload = () => res(window.JSZip);
+      s.onerror = () => { zipPromise = null; rej(new Error('Could not load the zip library.')); };
+      document.head.appendChild(s);
+    });
+    return zipPromise;
+  }
 
-      function parseExifDateValue(value) {
-        if (!value) return null;
+  // ---------- Single download ----------
+  async function downloadOne(it) {
+    if (!it.base || it.source === 'error') return;
+    await ensureFonts();
+    try {
+      const { blob } = await fullJpeg(it, document.createElement('canvas'));
+      saveBlob(stampedName(it.name), blob);
+    } catch (e) {
+      console.error('save failed', e);
+    }
+  }
 
-        if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+  // ---------- Batch export ----------
+  function setProgress(frac, text, warn) {
+    progBar.style.transform = `scaleX(${frac})`;
+    progText.textContent = text;
+    progText.classList.toggle('warn', !!warn);
+  }
 
-        if (typeof value === "number") {
-          const date = new Date(value);
-          return Number.isNaN(date.getTime()) ? null : date;
-        }
+  async function exportAll() {
+    const ready = items.filter(i => i.base && i.source !== 'error');
+    if (!ready.length || exporting) return;
 
-        if (typeof value !== "string") return null;
+    exporting = true; updateChrome();
+    progWrap.classList.add('show');
+    setProgress(0, 'Preparing…');
+    const used = new Set();
+    const canvas = document.createElement('canvas');
+    const failed = [];
+    let scaled = 0;
 
-        const trimmed = value.trim();
-        const exifPattern = /^(\d{4})[:\-](\d{2})[:\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}(?:\.\d+)?))?/;
-        const match = trimmed.match(exifPattern);
-
-        if (match) {
-          const date = new Date(
-            Number(match[1]),
-            Number(match[2]) - 1,
-            Number(match[3]),
-            Number(match[4]),
-            Number(match[5]),
-            Math.floor(Number(match[6] || 0))
-          );
-          return Number.isNaN(date.getTime()) ? null : date;
-        }
-
-        const parsed = new Date(trimmed);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-      }
-
-      async function readCaptureDate(file) {
-        if (window.exifr && typeof window.exifr.parse === "function") {
-          try {
-            const metadata = await window.exifr.parse(file, [
-              "DateTimeOriginal",
-              "CreateDate",
-              "DateTimeDigitized",
-              "ModifyDate"
-            ]);
-
-            const candidates = [
-              metadata?.DateTimeOriginal,
-              metadata?.CreateDate,
-              metadata?.DateTimeDigitized,
-              metadata?.ModifyDate
-            ];
-
-            for (const candidate of candidates) {
-              const parsed = parseExifDateValue(candidate);
-              if (parsed) return { date: parsed, source: "exif" };
-            }
-          } catch (error) {
-            console.warn("EXIF metadata could not be read:", file.name, error);
-          }
-        }
-
-        const fallback = new Date(file.lastModified || Date.now());
-        return {
-          date: Number.isNaN(fallback.getTime()) ? new Date() : fallback,
-          source: "fallback"
-        };
-      }
-
-      function showStatus(message, type = "info") {
-        elements.statusText.textContent = message;
-        elements.statusStrip.classList.add("visible");
-        elements.statusStrip.classList.toggle("warning", type === "warning");
-        elements.statusStrip.classList.toggle("error", type === "error");
-      }
-
-      function hideStatus() {
-        elements.statusStrip.classList.remove("visible", "warning", "error");
-        elements.statusText.textContent = "";
-      }
-
-      function setProgress(percent, label = "Processing") {
-        const safe = clamp(percent, 0, 100);
-        elements.progressWrap.classList.add("visible");
-        elements.progressLabel.textContent = label;
-        elements.progressPercent.textContent = `${Math.round(safe)}%`;
-        elements.progressBar.style.width = `${safe}%`;
-      }
-
-      function hideProgress() {
-        elements.progressWrap.classList.remove("visible");
-        elements.progressPercent.textContent = "0%";
-        elements.progressBar.style.width = "0%";
-      }
-
-      function setBusy(busy) {
-        state.busy = busy;
-        elements.fileInput.disabled = busy;
-        elements.presetSelect.disabled = busy;
-        elements.addMoreButton.disabled = busy;
-        elements.clearButton.disabled = busy;
-        elements.downloadAllButton.disabled = busy || state.photos.length === 0;
-
-        document.querySelectorAll(".card-action").forEach(button => {
-          button.disabled = busy;
-        });
-
-        if (busy) {
-          elements.downloadAllText.textContent = "Processing";
-          if (!elements.downloadAllButton.querySelector(".spinner")) {
-            const spinner = document.createElement("span");
-            spinner.className = "spinner";
-            elements.downloadAllButton.prepend(spinner);
-          }
-        } else {
-          elements.downloadAllText.textContent = "Download All";
-          elements.downloadAllButton.querySelector(".spinner")?.remove();
-        }
-      }
-
-      function updatePresetSample() {
-        const preset = PRESETS[state.preset];
-        elements.sampleDate.className = `sample-date ${state.preset}`;
-        elements.sampleDate.textContent = preset.sample;
-        elements.presetInfo.innerHTML = "";
-        const strong = document.createElement("strong");
-        strong.textContent = preset.title;
-        const span = document.createElement("span");
-        span.textContent = preset.description;
-        elements.presetInfo.append(strong, span);
-      }
-
-      function updateSummary() {
-        const count = state.photos.length;
-        const fallback = state.photos.filter(photo => photo.dateSource === "fallback").length;
-
-        elements.imageCount.textContent = `${count} ${count === 1 ? "photo" : "photos"}`;
-        elements.exportCount.textContent = String(count);
-        elements.fallbackCount.textContent = String(fallback);
-        elements.gallerySection.classList.toggle("hidden", count === 0);
-        elements.emptyState.classList.toggle("hidden", count !== 0);
-        elements.downloadAllButton.disabled = state.busy || count === 0;
-
-        if (count === 0) {
-          hideStatus();
-          return;
-        }
-
-        if (fallback > 0) {
-          showStatus(`${fallback} ${fallback === 1 ? "photo has" : "photos have"} no readable EXIF capture date. File Last Modified date will be used instead.`, "warning");
-        } else {
-          showStatus(`Original capture dates were found for all ${count} ${count === 1 ? "photo" : "photos"}.`);
-        }
-      }
-
-      function updatePreviewStamps() {
-        const preset = PRESETS[state.preset];
-
-        state.photos.forEach(photo => {
-          const card = document.querySelector(`.photo-card[data-photo-id="${photo.id}"]`);
-          if (!card) return;
-
-          const stamp = card.querySelector(".stamp-preview");
-          stamp.className = `stamp-preview ${state.preset}`;
-          stamp.textContent = formatDate(photo.date, preset.format);
-        });
-      }
-
-      function removePhoto(id) {
-        if (state.busy) return;
-
-        const index = state.photos.findIndex(photo => photo.id === id);
-        if (index === -1) return;
-
-        const [photo] = state.photos.splice(index, 1);
-        try { URL.revokeObjectURL(photo.objectUrl); } catch (_) {}
-
-        document.querySelector(`.photo-card[data-photo-id="${id}"]`)?.remove();
-        updateSummary();
-      }
-
-      function createPhotoCard(photo) {
-        const card = document.createElement("article");
-        card.className = "photo-card";
-        card.dataset.photoId = String(photo.id);
-
-        const preview = document.createElement("div");
-        preview.className = "photo-preview";
-
-        const image = document.createElement("img");
-        image.src = photo.objectUrl;
-        image.alt = "";
-        image.decoding = "async";
-
-        const stamp = document.createElement("span");
-        stamp.className = `stamp-preview ${state.preset}`;
-        stamp.textContent = formatDate(photo.date, PRESETS[state.preset].format);
-
-        preview.append(image, stamp);
-
-        const meta = document.createElement("div");
-        meta.className = "photo-meta";
-
-        const name = document.createElement("div");
-        name.className = "photo-name";
-        name.textContent = photo.file.name;
-        name.title = photo.file.name;
-
-        const details = document.createElement("div");
-        details.className = "photo-details";
-
-        const row = (label, valueNode) => {
-          const el = document.createElement("div");
-          el.className = "detail-row";
-          const l = document.createElement("span");
-          l.textContent = label;
-          el.append(l, valueNode);
-          return el;
-        };
-
-        const dateValue = document.createElement("strong");
-        dateValue.textContent = formatReadableDate(photo.date);
-
-        const dimensionsValue = document.createElement("strong");
-        dimensionsValue.textContent = "Reading…";
-
-        const sizeValue = document.createElement("strong");
-        sizeValue.textContent = formatBytes(photo.file.size);
-
-        const sourceBadge = document.createElement("span");
-        sourceBadge.className = `source-badge ${photo.dateSource === "exif" ? "exif" : "fallback"}`;
-        sourceBadge.textContent = photo.dateSource === "exif" ? "EXIF Date Taken" : "File modified";
-
-        details.append(
-          row("Date", dateValue),
-          row("Pixels", dimensionsValue),
-          row("File", sizeValue),
-          row("Source", sourceBadge)
-        );
-
-        const actions = document.createElement("div");
-        actions.className = "card-actions";
-
-        const download = document.createElement("button");
-        download.type = "button";
-        download.className = "card-action";
-        download.textContent = "Download";
-        download.addEventListener("click", () => downloadSinglePhoto(photo));
-
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "card-action remove";
-        remove.textContent = "Remove";
-        remove.addEventListener("click", () => removePhoto(photo.id));
-
-        actions.append(download, remove);
-        meta.append(name, details, actions);
-        card.append(preview, meta);
-
-        image.addEventListener("load", () => {
-          photo.width = image.naturalWidth;
-          photo.height = image.naturalHeight;
-          dimensionsValue.textContent = `${image.naturalWidth.toLocaleString()} × ${image.naturalHeight.toLocaleString()}`;
-        }, { once: true });
-
-        image.addEventListener("error", () => {
-          dimensionsValue.textContent = "Unable to decode";
-        }, { once: true });
-
-        return card;
-      }
-
-      async function addFiles(fileList) {
-        if (state.busy) return;
-
-        const files = Array.from(fileList || []);
-        if (!files.length) return;
-
-        const existing = new Set(state.photos.map(photo => fileIdentity(photo.file)));
-        const valid = [];
-        let rejected = 0;
-        let duplicates = 0;
-
-        for (const file of files) {
-          if (!isValidFile(file)) {
-            rejected += 1;
-            continue;
-          }
-
-          const identity = fileIdentity(file);
-          if (existing.has(identity)) {
-            duplicates += 1;
-            continue;
-          }
-
-          existing.add(identity);
-          valid.push(file);
-        }
-
-        elements.fileInput.value = "";
-
-        if (!valid.length) {
-          if (rejected) showStatus("No supported photos were added. Use JPG, JPEG, or PNG.", "error");
-          else if (duplicates) showStatus("Those photos are already in the batch.");
-          return;
-        }
-
-        setBusy(true);
-        setProgress(0, "Reading photo dates");
-
+    try {
+      const [JSZip] = await Promise.all([loadZip(), ensureFonts()]);
+      const zip = new JSZip();
+      for (let i = 0; i < ready.length; i++) {
+        const it = ready[i];
+        setProgress(i / ready.length, `Stamping ${i+1} / ${ready.length} · ${it.name}`);
+        await nextFrame();
         try {
-          for (let i = 0; i < valid.length; i += 1) {
-            const file = valid[i];
-            const capture = await readCaptureDate(file);
-
-            const photo = {
-              id: state.nextId++,
-              file,
-              objectUrl: URL.createObjectURL(file),
-              date: capture.date,
-              dateSource: capture.source,
-              width: null,
-              height: null
-            };
-
-            state.photos.push(photo);
-            elements.gallery.appendChild(createPhotoCard(photo));
-            setProgress(((i + 1) / valid.length) * 100, "Reading photo dates");
-            await nextFrame();
-          }
-        } finally {
-          setBusy(false);
-          hideProgress();
-          updateSummary();
-        }
-
-        if (rejected) {
-          showStatus(`${valid.length} ${valid.length === 1 ? "photo was" : "photos were"} added. ${rejected} unsupported ${rejected === 1 ? "file was" : "files were"} skipped.`, "warning");
+          const r = await fullJpeg(it, canvas);
+          if (r.scaled) scaled++;
+          zip.file(stampedName(it.name, used), r.blob, { binary: true, compression: 'STORE' });
+        } catch (e) {
+          console.error(e);
+          failed.push(it.name);
         }
       }
+      const done = ready.length - failed.length;
+      if (!done) throw new Error('None of the photos could be rendered in this browser.');
 
-      function nextFrame() {
-        return new Promise(resolve => requestAnimationFrame(resolve));
-      }
-
-      function loadImage(url) {
-        return new Promise((resolve, reject) => {
-          const img = new Image();
-          img.decoding = "async";
-          img.onload = () => resolve(img);
-          img.onerror = () => reject(new Error("The image could not be decoded."));
-          img.src = url;
-        });
-      }
-
-      function roundedRectPath(ctx, x, y, w, h, r) {
-        const radius = Math.min(r, w / 2, h / 2);
-        ctx.beginPath();
-        ctx.moveTo(x + radius, y);
-        ctx.lineTo(x + w - radius, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + radius);
-        ctx.lineTo(x + w, y + h - radius);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - radius, y + h);
-        ctx.lineTo(x + radius, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - radius);
-        ctx.lineTo(x, y + radius);
-        ctx.quadraticCurveTo(x, y, x + radius, y);
-        ctx.closePath();
-      }
-
-      function measureTextWithSpacing(ctx, text, spacing) {
-        if (!spacing) return ctx.measureText(text).width;
-
-        let width = 0;
-        for (let i = 0; i < text.length; i += 1) {
-          width += ctx.measureText(text[i]).width;
-          if (i < text.length - 1) width += spacing;
+      setProgress(1, 'Packaging .zip…');
+      let lastPct = -1;
+      const content = await zip.generateAsync(
+        { type: 'blob', compression: 'STORE', streamFiles: true },
+        md => {
+          const pct = Math.floor(md.percent);
+          if (pct !== lastPct) { lastPct = pct; progText.textContent = `Packaging .zip… ${pct}%`; }
         }
-        return width;
-      }
-
-      function drawTextWithSpacing(ctx, text, x, y, spacing) {
-        if (!spacing) {
-          ctx.fillText(text, x, y);
-          return;
-        }
-
-        let cursor = x;
-        for (let i = 0; i < text.length; i += 1) {
-          const char = text[i];
-          ctx.fillText(char, cursor, y);
-          cursor += ctx.measureText(char).width + spacing;
-        }
-      }
-
-      function calculateLayout(ctx, canvas, text, preset) {
-        const shortSide = Math.min(canvas.width, canvas.height);
-        const longSide = Math.max(canvas.width, canvas.height);
-
-        let fontSize = clamp(shortSide * preset.fontRatio, preset.minimumFont, preset.maximumFont);
-        let spacing = fontSize * preset.letterSpacingRatio;
-        const maxWidth = canvas.width * .88;
-
-        while (fontSize > preset.minimumFont) {
-          ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-          spacing = fontSize * preset.letterSpacingRatio;
-          const width = measureTextWithSpacing(ctx, text, spacing);
-          const extra = preset.background ? fontSize * 1.4 : 0;
-
-          if (width + extra <= maxWidth) break;
-          fontSize *= .94;
-        }
-
-        ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-        spacing = fontSize * preset.letterSpacingRatio;
-
-        const metrics = ctx.measureText(text);
-        const measuredWidth = measureTextWithSpacing(ctx, text, spacing);
-        const ascent = metrics.actualBoundingBoxAscent || fontSize * .8;
-        const descent = metrics.actualBoundingBoxDescent || fontSize * .2;
-        const textHeight = ascent + descent;
-        const margin = clamp(shortSide * .025, fontSize * .75, longSide * .055);
-
-        return { fontSize, spacing, measuredWidth, ascent, descent, textHeight, margin };
-      }
-
-      function drawTimestamp(ctx, canvas, date, presetName) {
-        const preset = PRESETS[presetName];
-        const text = formatDate(date, preset.format);
-        const layout = calculateLayout(ctx, canvas, text, preset);
-
-        const { fontSize, spacing, measuredWidth, ascent, descent, textHeight, margin } = layout;
-
-        let x;
-        let baselineY;
-
-        if (preset.position === "top-left") {
-          x = margin;
-          baselineY = margin + ascent;
-        } else if (preset.position === "bottom-left") {
-          x = margin;
-          baselineY = canvas.height - margin - descent;
-        } else {
-          x = canvas.width - margin - measuredWidth;
-          baselineY = canvas.height - margin - descent;
-        }
-
-        ctx.save();
-        ctx.font = `${preset.fontWeight} ${fontSize}px ${preset.fontFamily}`;
-        ctx.textAlign = "left";
-        ctx.textBaseline = "alphabetic";
-
-        if (preset.background) {
-          const padX = fontSize * .7;
-          const padY = fontSize * .42;
-          const boxW = measuredWidth + padX * 2;
-          const boxH = textHeight + padY * 2;
-
-          let boxX;
-          let boxY;
-
-          if (preset.position === "top-left") {
-            boxX = margin;
-            boxY = margin;
-          } else if (preset.position === "bottom-left") {
-            boxX = margin;
-            boxY = canvas.height - margin - boxH;
-          } else {
-            boxX = canvas.width - margin - boxW;
-            boxY = canvas.height - margin - boxH;
-          }
-
-          const radius = preset.pill ? boxH / 2 : fontSize * (preset.boxRadiusRatio || .04);
-
-          ctx.fillStyle = preset.background;
-          roundedRectPath(ctx, boxX, boxY, boxW, boxH, radius);
-          ctx.fill();
-
-          if (preset.borderColor) {
-            ctx.strokeStyle = preset.borderColor;
-            ctx.lineWidth = Math.max(1, fontSize * .025);
-            ctx.stroke();
-          }
-
-          x = boxX + padX;
-          baselineY = boxY + padY + ascent;
-        } else {
-          if (preset.glowColor) {
-            ctx.fillStyle = preset.fillStyle;
-            ctx.shadowColor = preset.glowColor;
-            ctx.shadowBlur = fontSize * .09;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
-            drawTextWithSpacing(ctx, text, x, baselineY, spacing);
-          }
-
-          ctx.shadowColor = preset.shadowColor || "transparent";
-          ctx.shadowBlur = fontSize * (preset.shadowBlurRatio || 0);
-          ctx.shadowOffsetX = fontSize * (preset.shadowOffsetRatio || 0);
-          ctx.shadowOffsetY = fontSize * (preset.shadowOffsetRatio || 0);
-        }
-
-        ctx.fillStyle = preset.fillStyle;
-        drawTextWithSpacing(ctx, text, x, baselineY, spacing);
-        ctx.restore();
-      }
-
-      async function renderPhoto(photo, presetName) {
-        const image = await loadImage(photo.objectUrl);
-        const width = image.naturalWidth;
-        const height = image.naturalHeight;
-
-        if (!width || !height) throw new Error("Invalid image dimensions.");
-
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-
-        if (canvas.width !== width || canvas.height !== height) {
-          throw new Error("This browser cannot allocate a canvas at the original resolution.");
-        }
-
-        const ctx = canvas.getContext("2d", { alpha: false, desynchronized: false });
-        if (!ctx) throw new Error("Canvas rendering is unavailable.");
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, width, height);
-        ctx.drawImage(image, 0, 0, width, height);
-
-        drawTimestamp(ctx, canvas, photo.date, presetName);
-
-        const blob = await new Promise((resolve, reject) => {
-          canvas.toBlob(result => {
-            if (result) resolve(result);
-            else reject(new Error("The browser could not create the final JPEG."));
-          }, "image/jpeg", 1.0);
-        });
-
-        canvas.width = 1;
-        canvas.height = 1;
-
-        return { blob, width, height };
-      }
-
-      function safeBaseName(filename) {
-        const withoutExtension = filename.replace(/\.[^.]+$/, "");
-        const cleaned = withoutExtension
-          .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
-          .replace(/\s+/g, " ")
-          .trim();
-        return cleaned || "photo";
-      }
-
-      function uniqueOutputName(filename, counts) {
-        const base = safeBaseName(filename);
-        const current = (counts.get(base) || 0) + 1;
-        counts.set(base, current);
-        return current === 1 ? `${base}_dated.jpg` : `${base}_dated_${current}.jpg`;
-      }
-
-      function triggerDownload(blob, filename) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.rel = "noopener";
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 2500);
-      }
-
-      function zipFilename() {
-        const now = new Date();
-        return `dated_photos_${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.zip`;
-      }
-
-      async function downloadSinglePhoto(photo) {
-        if (state.busy) return;
-
-        setBusy(true);
-        setProgress(5, "Rendering original resolution");
-
-        try {
-          const result = await renderPhoto(photo, state.preset);
-          setProgress(100, "Ready");
-          triggerDownload(result.blob, `${safeBaseName(photo.file.name)}_dated.jpg`);
-          showStatus(`${photo.file.name} exported at ${result.width.toLocaleString()} × ${result.height.toLocaleString()} pixels.`);
-        } catch (error) {
-          console.error(error);
-          showStatus(`Could not export ${photo.file.name}. ${error.message || "Image processing failed."}`, "error");
-        } finally {
-          await nextFrame();
-          setBusy(false);
-          hideProgress();
-        }
-      }
-
-      async function downloadAll() {
-        if (state.busy || !state.photos.length) return;
-
-        const photos = [...state.photos];
-        const names = new Map();
-        const failed = [];
-
-        setBusy(true);
-        setProgress(0, "Rendering full-resolution photos");
-
-        try {
-          if (window.JSZip) {
-            const zip = new JSZip();
-
-            for (let i = 0; i < photos.length; i += 1) {
-              const photo = photos[i];
-              setProgress((i / photos.length) * 82, `Rendering ${i + 1} of ${photos.length}`);
-
-              try {
-                const result = await renderPhoto(photo, state.preset);
-                zip.file(uniqueOutputName(photo.file.name, names), result.blob, {
-                  binary: true,
-                  compression: "STORE"
-                });
-              } catch (error) {
-                console.error(error);
-                failed.push(photo.file.name);
-              }
-
-              await nextFrame();
-            }
-
-            if (failed.length === photos.length) throw new Error("None of the photos could be rendered at full resolution in this browser.");
-
-            setProgress(86, "Building ZIP");
-
-            const zipBlob = await zip.generateAsync(
-              { type: "blob", compression: "STORE", platform: "DOS" },
-              metadata => setProgress(86 + metadata.percent * .14, "Building ZIP")
-            );
-
-            setProgress(100, "Ready");
-            triggerDownload(zipBlob, zipFilename());
-          } else {
-            for (let i = 0; i < photos.length; i += 1) {
-              const photo = photos[i];
-              setProgress((i / photos.length) * 100, `Rendering ${i + 1} of ${photos.length}`);
-
-              try {
-                const result = await renderPhoto(photo, state.preset);
-                triggerDownload(result.blob, uniqueOutputName(photo.file.name, names));
-              } catch (error) {
-                console.error(error);
-                failed.push(photo.file.name);
-              }
-              await new Promise(resolve => setTimeout(resolve, 120));
-            }
-            setProgress(100, "Ready");
-          }
-
-          const fallback = photos.filter(photo => photo.dateSource === "fallback").length;
-          const done = photos.length - failed.length;
-          showStatus(
-            `${done} ${done === 1 ? "photo was" : "photos were"} exported at original pixel dimensions using JPEG quality 1.0.${fallback ? ` ${fallback} ${fallback === 1 ? "image used" : "images used"} the file modified date.` : ""}${failed.length ? ` Could not render: ${failed.slice(0, 3).join(", ")}${failed.length > 3 ? ` and ${failed.length - 3} more` : ""}. These may be too large for this browser.` : ""}`,
-            fallback || failed.length ? "warning" : "info"
-          );
-        } catch (error) {
-          console.error(error);
-          showStatus(`Batch export stopped. ${error.message || "Image processing failed."}`, "error");
-        } finally {
-          await nextFrame();
-          setBusy(false);
-          hideProgress();
-        }
-      }
-
-      function clearAll() {
-        if (state.busy) return;
-
-        state.photos.forEach(photo => {
-          try { URL.revokeObjectURL(photo.objectUrl); } catch (_) {}
-        });
-
-        state.photos = [];
-        elements.gallery.replaceChildren();
-        elements.fileInput.value = "";
-        updateSummary();
-      }
-
-      elements.presetSelect.addEventListener("change", event => {
-        state.preset = event.target.value;
-        updatePresetSample();
-        updatePreviewStamps();
-      });
-
-      elements.dropZone.addEventListener("click", () => {
-        if (!state.busy) elements.fileInput.click();
-      });
-
-      elements.dropZone.addEventListener("keydown", event => {
-        if (!state.busy && (event.key === "Enter" || event.key === " ")) {
-          event.preventDefault();
-          elements.fileInput.click();
-        }
-      });
-
-      elements.fileInput.addEventListener("change", event => addFiles(event.target.files));
-
-      elements.addMoreButton.addEventListener("click", () => {
-        if (!state.busy) elements.fileInput.click();
-      });
-
-      elements.clearButton.addEventListener("click", clearAll);
-      elements.downloadAllButton.addEventListener("click", downloadAll);
-
-      ["dragenter","dragover"].forEach(eventName => {
-        elements.dropZone.addEventListener(eventName, event => {
-          event.preventDefault();
-          event.stopPropagation();
-          if (!state.busy) elements.dropZone.classList.add("dragover");
-        });
-      });
-
-      ["dragleave","drop"].forEach(eventName => {
-        elements.dropZone.addEventListener(eventName, event => {
-          event.preventDefault();
-          event.stopPropagation();
-          elements.dropZone.classList.remove("dragover");
-        });
-      });
-
-      elements.dropZone.addEventListener("drop", event => {
-        if (!state.busy) addFiles(event.dataTransfer.files);
-      });
-
-      window.addEventListener("beforeunload", () => {
-        state.photos.forEach(photo => {
-          try { URL.revokeObjectURL(photo.objectUrl); } catch (_) {}
-        });
-      });
-
-      updatePresetSample();
-      updateSummary();
-
-      if (!window.exifr) {
-        showStatus("The EXIF library could not load. Photos can still be processed using each file's Last Modified date.", "warning");
-      }
-    })();
-  </script>
+      );
+      saveBlob(`datestamped_${new Date().toISOString().slice(0,10)}.zip`, content);
+
+      const notes = [];
+      if (scaled) notes.push(`${scaled} ${scaled === 1 ? 'photo was' : 'photos were'} larger than this browser can draw and ${scaled === 1 ? 'was' : 'were'} saved at the largest size it allows.`);
+      if (failed.length) notes.push(`Skipped: ${failed.join(', ')}.`);
+      setProgress(1, `Done · ${done} photo${done !== 1 ? 's' : ''} exported.${notes.length ? ' ' + notes.join(' ') : ''}`, notes.length > 0);
+    } catch (e) {
+      setProgress(1, e.message || 'Export failed.', true);
+    } finally {
+      exporting = false;
+      updateChrome();
+      const keep = progText.classList.contains('warn') ? 9000 : 2400;
+      setTimeout(() => { if (!exporting) { progWrap.classList.remove('show'); setProgress(0, ''); } }, keep);
+    }
+  }
+
+  // ---------- Events ----------
+  drop.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', e => { addFiles(e.target.files); fileInput.value = ''; });
+
+  ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); drop.classList.add('drag');
+  }));
+  ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => {
+    e.preventDefault(); if (ev === 'dragleave' && drop.contains(e.relatedTarget)) return;
+    drop.classList.remove('drag');
+  }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer?.files) addFiles(e.dataTransfer.files); });
+  window.addEventListener('dragover', e => e.preventDefault());
+  window.addEventListener('drop', e => e.preventDefault());
+
+  presetSel.addEventListener('change', () => { refreshPreviews(); ensureFonts().then(refreshPreviews); });
+  sizeSel.addEventListener('change', refreshPreviews);
+  zipBtn.addEventListener('click', exportAll);
+  clearBtn.addEventListener('click', () => {
+    queue.length = 0;
+    items.splice(0).forEach(dropItem);
+    cardsEl.textContent = '';
+    updateChrome();
+  });
+
+  ensureFonts().then(refreshPreviews);
+})();
+</script>
 </body>
 </html>
