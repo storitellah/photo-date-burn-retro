@@ -55,6 +55,9 @@
   .credit{margin-left:auto;font-size:13px;color:var(--text-dim);white-space:nowrap}
   .credit a{color:var(--accent-hi);text-decoration:none}
   .credit a:hover{text-decoration:underline}
+  .credit .kofi{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;font-weight:600}
+  .credit .kofi img{width:20px;height:16px;display:block}
+  @media (pointer:coarse){ .credit a{display:inline-flex;align-items:center;min-height:32px} }
   .tagline{color:var(--text-dim);font-size:14.5px;margin:2px 0 30px 58px}
 
   .grid{display:grid;grid-template-columns:340px minmax(0,1fr);gap:24px;align-items:start}
@@ -133,7 +136,7 @@
   .card .meta{padding:10px 12px}
   .card .name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .card .sub{font-size:11.5px;color:var(--text-dim);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-  .tag{font-size:10px;padding:2px 7px;border-radius:99px;font-weight:600;letter-spacing:.02em}
+  .tag{font-size:11px;padding:2px 7px;border-radius:99px;font-weight:600;letter-spacing:.02em}
   .tag.exif{background:rgba(63,209,139,.14);color:var(--success)}
   .tag.fallback{background:rgba(245,181,68,.16);color:var(--warn)}
   .tag.err{background:rgba(255,107,107,.16);color:var(--danger)}
@@ -159,6 +162,7 @@
     .wrap{padding:20px 14px 56px}
     header{flex-wrap:wrap;row-gap:4px}
     h1{font-size:22px}
+    .credit{margin-left:0;width:100%}
     .tagline{margin:4px 0 20px;font-size:14px}
     .panel{padding:16px;box-shadow:none}
     .panel + .panel{margin-top:14px}
@@ -177,7 +181,7 @@
   <header>
     <div class="logo" aria-hidden="true">◷</div>
     <h1>DateStamp</h1>
-    <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a></p>
+    <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a> · <a class="kofi" href="https://ko-fi.com/kiberastories" target="_blank" rel="noopener"><img src="ko-fi.webp" alt="" width="20" height="16">Tip on Ko-fi</a></p>
   </header>
   <p class="tagline">Burn the original “Date Taken” onto your photos at full resolution, in your browser.</p>
 
