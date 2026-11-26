@@ -8,6 +8,12 @@
 <meta name="theme-color" content="#0d0f14">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DateStamp">
+<script src="install.js" defer></script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Stamp fonts only. Subset to the characters a stamp can contain, loaded without blocking the page. -->
@@ -57,6 +63,12 @@
   .credit a:hover{text-decoration:underline}
   .credit .kofi{display:inline-flex;align-items:center;gap:5px;vertical-align:middle;font-weight:600}
   .credit .kofi img{width:20px;height:16px;display:block}
+.install-app{display:none}
+.can-install .install-app{display:inline}
+.install-app button{font:inherit;font-weight:600;color:var(--accent-hi);background:none;border:0;padding:0;margin:0;cursor:pointer;text-decoration:none;text-underline-offset:2px}
+.install-app button:hover{text-decoration:underline}
+@media (pointer:coarse){.install-app button{min-height:32px}}
+
   @media (pointer:coarse){ .credit a{display:inline-flex;align-items:center;min-height:32px} }
   .tagline{color:var(--text-dim);font-size:14.5px;margin:2px 0 30px 58px}
 
@@ -181,7 +193,7 @@
   <header>
     <div class="logo" aria-hidden="true">◷</div>
     <h1>DateStamp</h1>
-    <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a> · <a class="kofi" href="https://ko-fi.com/kiberastories" target="_blank" rel="noopener"><img src="ko-fi.webp" alt="" width="20" height="16">Tip on Ko-fi</a></p>
+    <p class="credit">Made by <a href="https://storitellah.com" target="_blank" rel="noopener">Brian Otieno</a> · <a class="kofi" href="https://ko-fi.com/kiberastories" target="_blank" rel="noopener"><img src="ko-fi.webp" alt="" width="20" height="16">Tip on Ko-fi</a><span class="install-app" data-install-app> · <button type="button">Install app</button></span></p>
   </header>
   <p class="tagline">Burn the original “Date Taken” onto your photos at full resolution, in your browser.</p>
 
